@@ -1,13 +1,21 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle, Calendar, Clock, Scissors } from "lucide-react";
+import { CheckCircle, Calendar, Clock, Scissors, Tag, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Servico } from "@/components/ServiceSelector";
+
+const WHATSAPP_NUMBER = "5521995323454";
 
 export default function AgendamentoSucesso() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { nome, date, time } = (location.state as { nome: string; date: string; time: string }) || {};
+  const { nome, date, time, servico } = (location.state as {
+    nome: string;
+    date: string;
+    time: string;
+    servico?: Servico;
+  }) || {};
 
   if (!date || !time) {
     navigate("/agendamento");
@@ -16,6 +24,17 @@ export default function AgendamentoSucesso() {
 
   const dateDisplay = format(parse(date, "yyyy-MM-dd", new Date()), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const timeDisplay = time.slice(0, 5);
+
+  const whatsappMsg = encodeURIComponent(
+    `Olá! Novo agendamento na Barbearia Cardoso:\n` +
+    `👤 ${nome}\n` +
+    `📅 ${dateDisplay}\n` +
+    `🕐 ${timeDisplay}\n` +
+    (servico ? `✂️ ${servico.nome}\n` : "") +
+    `Aguardo confirmação!`
+  );
+
+  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -38,6 +57,12 @@ export default function AgendamentoSucesso() {
             <span className="text-primary font-semibold text-sm font-body">Nome:</span>
             <span className="font-body">{nome}</span>
           </div>
+          {servico && (
+            <div className="flex items-center gap-3">
+              <Tag className="h-5 w-5 text-primary" />
+              <span className="font-body">{servico.nome} — R$ {servico.preco.toFixed(2).replace(".", ",")}</span>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <Calendar className="h-5 w-5 text-primary" />
             <span className="font-body">{dateDisplay}</span>
@@ -47,6 +72,18 @@ export default function AgendamentoSucesso() {
             <span className="font-body">{timeDisplay}</span>
           </div>
         </div>
+
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full"
+        >
+          <Button className="w-full py-6 text-lg font-heading tracking-widest bg-[#25D366] hover:bg-[#1da851] text-white" size="lg">
+            <MessageCircle className="mr-2 h-5 w-5" />
+            ENVIAR WHATSAPP
+          </Button>
+        </a>
 
         <Button
           onClick={() => navigate("/agendamento")}

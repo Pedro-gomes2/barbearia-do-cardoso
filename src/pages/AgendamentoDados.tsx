@@ -2,24 +2,31 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Scissors, Calendar, Clock, User, Phone } from "lucide-react";
+import { Scissors, Calendar, Clock, User, Phone, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createAppointment } from "@/lib/supabase-helpers";
 import { useToast } from "@/hooks/use-toast";
+import type { Servico } from "@/components/ServiceSelector";
+
+interface LocationState {
+  date: string;
+  time: string;
+  servico: Servico;
+}
 
 export default function AgendamentoDados() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { date, time } = (location.state as { date: string; time: string }) || {};
+  const { date, time, servico } = (location.state as LocationState) || {};
 
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (!date || !time) {
+  if (!date || !time || !servico) {
     navigate("/agendamento");
     return null;
   }
@@ -40,8 +47,8 @@ export default function AgendamentoDados() {
 
     setLoading(true);
     try {
-      await createAppointment(nome, telefone, date, time);
-      navigate("/agendamento/sucesso", { state: { nome, date, time } });
+      await createAppointment(nome, telefone, date, time, servico.id);
+      navigate("/agendamento/sucesso", { state: { nome, date, time, servico } });
     } catch (err: any) {
       toast({ title: "Erro ao agendar", description: err.message || "Tente novamente.", variant: "destructive" });
     } finally {
@@ -65,14 +72,21 @@ export default function AgendamentoDados() {
         </div>
 
         {/* Summary */}
-        <div className="bg-card rounded-xl p-4 border border-border flex items-center gap-4">
+        <div className="bg-card rounded-xl p-4 border border-border space-y-3">
           <div className="flex items-center gap-2 text-primary">
-            <Calendar className="h-5 w-5" />
-            <span className="font-body text-sm">{dateDisplay}</span>
+            <Tag className="h-5 w-5" />
+            <span className="font-body text-sm font-semibold">{servico.nome}</span>
+            <span className="ml-auto font-heading text-lg">R$ {servico.preco.toFixed(2).replace(".", ",")}</span>
           </div>
-          <div className="flex items-center gap-2 text-primary">
-            <Clock className="h-5 w-5" />
-            <span className="font-body text-sm">{timeDisplay}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Calendar className="h-5 w-5" />
+              <span className="font-body text-sm">{dateDisplay}</span>
+            </div>
+            <div className="flex items-center gap-2 text-primary">
+              <Clock className="h-5 w-5" />
+              <span className="font-body text-sm">{timeDisplay}</span>
+            </div>
           </div>
         </div>
 
@@ -81,28 +95,13 @@ export default function AgendamentoDados() {
             <Label htmlFor="nome" className="flex items-center gap-2">
               <User className="h-4 w-4 text-primary" /> Nome
             </Label>
-            <Input
-              id="nome"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Seu nome completo"
-              required
-              minLength={2}
-              maxLength={100}
-            />
+            <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required minLength={2} maxLength={100} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="telefone" className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-primary" /> Telefone
             </Label>
-            <Input
-              id="telefone"
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              placeholder="(11) 99999-9999"
-              required
-              maxLength={20}
-            />
+            <Input id="telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(21) 99999-9999" required maxLength={20} />
           </div>
           <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-heading tracking-widest" size="lg">
             {loading ? "AGENDANDO..." : "CONFIRMAR AGENDAMENTO"}
