@@ -31,7 +31,7 @@ export function AdminSidebar() {
   const navigate = useNavigate();
 
   const isActive = (path: string) => pathname === path;
-  const isExpanded = items.some((item) => isActive(item.url));
+  
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -48,7 +48,7 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup defaultOpen={isExpanded}>
+        <SidebarGroup>
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
