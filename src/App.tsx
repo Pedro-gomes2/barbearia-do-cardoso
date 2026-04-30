@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { RequireAuth } from "@/components/RequireAuth";
+import AdminLayout from "@/components/AdminLayout";
 import Index from "./pages/Index";
 import Agendamento from "./pages/Agendamento";
 import AgendamentoDados from "./pages/AgendamentoDados";
@@ -12,6 +13,8 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminAgenda from "./pages/AdminAgenda";
 import AdminBloqueios from "./pages/AdminBloqueios";
+import AdminClientes from "./pages/AdminClientes";
+import AdminServicos from "./pages/AdminServicos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,9 +31,13 @@ const App = () => (
           <Route path="/agendamento/dados" element={<AgendamentoDados />} />
           <Route path="/agendamento/sucesso" element={<AgendamentoSucesso />} />
           <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
-          <Route path="/admin/agenda" element={<RequireAuth><AdminAgenda /></RequireAuth>} />
-          <Route path="/admin/bloqueios" element={<RequireAuth><AdminBloqueios /></RequireAuth>} />
+          <Route element={<RequireAuth><AdminLayout /></RequireAuth>}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/agenda" element={<AdminAgenda />} />
+            <Route path="/admin/bloqueios" element={<AdminBloqueios />} />
+            <Route path="/admin/clientes" element={<AdminClientes />} />
+            <Route path="/admin/servicos" element={<AdminServicos />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
