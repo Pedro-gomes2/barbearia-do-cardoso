@@ -60,7 +60,7 @@ export async function createAppointment(
   telefone: string,
   data: string,
   horario: string,
-  servicoId?: string
+  servicoIds: string[]
 ) {
   const { data: usuario, error: userError } = await supabase
     .from("usuarios")
@@ -71,7 +71,8 @@ export async function createAppointment(
   if (userError) throw userError;
 
   const insertData: any = { cliente_id: usuario.id, data, horario };
-  if (servicoId) insertData.servico_id = servicoId;
+  // Keep first servico_id for backward compat
+  if (servicoIds.length > 0) insertData.servico_id = servicoIds[0];
 
   const { data: agendamento, error: agError } = await supabase
     .from("agendamentos")
@@ -80,6 +81,18 @@ export async function createAppointment(
     .single();
 
   if (agError) throw agError;
+
+  // Insert all services into junction table
+  if (servicoIds.length > 0) {
+    const rows = servicoIds.map((sid) => ({
+      agendamento_id: agendamento.id,
+      servico_id: sid,
+    }));
+    const { error: junctionError } = await supabase
+      .from("agendamento_servicos")
+      .insert(rows);
+    if (junctionError) throw junctionError;
+  }
 
   return { usuario, agendamento };
 }
