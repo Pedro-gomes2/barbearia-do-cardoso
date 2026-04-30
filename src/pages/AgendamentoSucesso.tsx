@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle, Calendar, Clock, Tag, MessageCircle } from "lucide-react";
+import { CheckCircle, Calendar, Clock, Tag, MessageCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Scissors } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { Servico } from "@/components/ServiceSelector";
 
 const WHATSAPP_NUMBER = "5521995323454";
@@ -11,6 +12,7 @@ const WHATSAPP_NUMBER = "5521995323454";
 export default function AgendamentoSucesso() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const { nome, date, time, servicos } = (location.state as {
     nome: string;
@@ -29,16 +31,25 @@ export default function AgendamentoSucesso() {
   const totalPrice = (servicos || []).reduce((sum, s) => sum + s.preco, 0);
 
   const servicosText = (servicos || []).map((s) => s.nome).join(", ");
-  const whatsappMsg = encodeURIComponent(
+  const messageText =
     `Olá! Novo agendamento na Barbearia Cardoso:\n` +
     `👤 ${nome}\n` +
     `📅 ${dateDisplay}\n` +
     `🕐 ${timeDisplay}\n` +
     (servicosText ? `✂️ ${servicosText}\n` : "") +
-    `Aguardo confirmação!`
-  );
+    `Aguardo confirmação!`;
 
+  const whatsappMsg = encodeURIComponent(messageText);
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(messageText);
+      toast({ title: "Mensagem copiada!", description: "Cole no WhatsApp manualmente." });
+    } catch {
+      toast({ title: "Erro ao copiar", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -98,9 +109,19 @@ export default function AgendamentoSucesso() {
         </a>
 
         <Button
-          onClick={() => navigate("/agendamento")}
+          onClick={handleCopy}
           variant="outline"
-          className="w-full py-6 text-lg font-heading tracking-widest"
+          className="w-full py-5 text-base font-heading tracking-widest"
+          size="lg"
+        >
+          <Copy className="mr-2 h-5 w-5" />
+          COPIAR MENSAGEM
+        </Button>
+
+        <Button
+          onClick={() => navigate("/agendamento")}
+          variant="ghost"
+          className="w-full py-5 text-base font-heading tracking-widest"
           size="lg"
         >
           NOVO AGENDAMENTO

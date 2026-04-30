@@ -1,10 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import { Scissors, Clock, CalendarCheck } from "lucide-react";
+import { Scissors, Clock, CalendarCheck, Tag, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-barbershop.jpg";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Index() {
   const navigate = useNavigate();
+
+  const { data: servicos = [] } = useQuery({
+    queryKey: ["servicos-landing"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servicos")
+        .select("id, nome, preco")
+        .eq("ativo", true)
+        .order("nome");
+      return data || [];
+    },
+  });
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -45,6 +59,26 @@ export default function Index() {
           </div>
         </div>
 
+        {/* Services & Prices */}
+        {servicos.length > 0 && (
+          <div className="bg-card rounded-xl p-6 border border-border space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Tag className="h-6 w-6" />
+              <h3 className="text-2xl">NOSSOS SERVIÇOS</h3>
+            </div>
+            <div className="divide-y divide-border">
+              {servicos.map((s: any) => (
+                <div key={s.id} className="flex items-center justify-between py-3">
+                  <span className="font-body">{s.nome}</span>
+                  <span className="font-heading text-primary text-xl">
+                    R$ {Number(s.preco).toFixed(2).replace(".", ",")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Button
           onClick={() => navigate("/agendamento")}
           className="w-full py-8 text-2xl font-heading tracking-[0.2em]"
@@ -52,6 +86,18 @@ export default function Index() {
         >
           AGENDAR AGORA
         </Button>
+
+        {/* Contact */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+          <div className="bg-card rounded-xl p-4 border border-border flex items-center justify-center gap-3">
+            <Phone className="h-5 w-5 text-primary" />
+            <span className="font-body text-sm">(21) 99532-3454</span>
+          </div>
+          <div className="bg-card rounded-xl p-4 border border-border flex items-center justify-center gap-3">
+            <MapPin className="h-5 w-5 text-primary" />
+            <span className="font-body text-sm">Rio de Janeiro, RJ</span>
+          </div>
+        </div>
       </section>
     </div>
   );

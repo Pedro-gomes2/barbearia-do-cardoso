@@ -23,6 +23,26 @@ export default function AdminDashboard() {
         .select("*, usuarios(nome, telefone), servicos(nome)")
         .eq("data", dateStr)
         .order("horario");
+
+      // Fetch junction table services for each appointment
+      if (data && data.length > 0) {
+        const ids = data.map((a: any) => a.id);
+        const { data: junctionData } = await supabase
+          .from("agendamento_servicos")
+          .select("agendamento_id, servico_id, servicos:servico_id(nome)")
+          .in("agendamento_id", ids);
+
+        const servicesByApt: Record<string, string[]> = {};
+        (junctionData || []).forEach((j: any) => {
+          if (!servicesByApt[j.agendamento_id]) servicesByApt[j.agendamento_id] = [];
+          if (j.servicos?.nome) servicesByApt[j.agendamento_id].push(j.servicos.nome);
+        });
+
+        return data.map((a: any) => ({
+          ...a,
+          allServicos: servicesByApt[a.id] || (a.servicos?.nome ? [a.servicos.nome] : []),
+        }));
+      }
       return data || [];
     },
   });
@@ -82,7 +102,7 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div className="container max-w-2xl py-8 space-y-8 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-8 animate-fade-in">
       {/* Stats cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
@@ -116,57 +136,60 @@ export default function AdminDashboard() {
         </ResponsiveContainer>
       </div>
 
-      {/* Calendar */}
-      <div className="bg-card rounded-xl p-4 border border-border">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={(d) => d && setDate(d)}
-          locale={ptBR}
-          className="pointer-events-auto mx-auto"
-        />
-      </div>
-
-      {/* Day appointments */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <CalendarDays className="h-5 w-5 text-primary" />
-          <h2 className="text-2xl">{format(date, "dd 'DE' MMMM", { locale: ptBR }).toUpperCase()}</h2>
+      {/* Calendar + Appointments side by side on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Calendar */}
+        <div className="bg-card rounded-xl p-4 border border-border">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => d && setDate(d)}
+            locale={ptBR}
+            className="pointer-events-auto mx-auto"
+          />
         </div>
 
-        {appointments.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8 font-body">Nenhum agendamento para esta data.</p>
-        ) : (
-          <div className="space-y-3">
-            {appointments.map((apt: any) => (
-              <div
-                key={apt.id}
-                className={`bg-card rounded-xl p-4 border border-border flex items-center justify-between ${
-                  apt.status === "cancelado" ? "opacity-50" : ""
-                }`}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-primary font-heading text-xl">{apt.horario?.slice(0, 5)}</span>
-                    {apt.status === "cancelado" && (
-                      <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded font-body">Cancelado</span>
+        {/* Day appointments */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="h-5 w-5 text-primary" />
+            <h2 className="text-2xl">{format(date, "dd 'DE' MMMM", { locale: ptBR }).toUpperCase()}</h2>
+          </div>
+
+          {appointments.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8 font-body">Nenhum agendamento para esta data.</p>
+          ) : (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              {appointments.map((apt: any) => (
+                <div
+                  key={apt.id}
+                  className={`bg-card rounded-xl p-4 border border-border flex items-center justify-between ${
+                    apt.status === "cancelado" ? "opacity-50" : ""
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary font-heading text-xl">{apt.horario?.slice(0, 5)}</span>
+                      {apt.status === "cancelado" && (
+                        <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded font-body">Cancelado</span>
+                      )}
+                    </div>
+                    <p className="font-body text-sm">{apt.usuarios?.nome}</p>
+                    <p className="font-body text-xs text-muted-foreground">{apt.usuarios?.telefone}</p>
+                    {apt.allServicos && apt.allServicos.length > 0 && (
+                      <p className="font-body text-xs text-primary/80">✂️ {apt.allServicos.join(", ")}</p>
                     )}
                   </div>
-                  <p className="font-body text-sm">{apt.usuarios?.nome}</p>
-                  <p className="font-body text-xs text-muted-foreground">{apt.usuarios?.telefone}</p>
-                  {apt.servicos?.nome && (
-                    <p className="font-body text-xs text-primary/80">✂️ {apt.servicos.nome}</p>
+                  {apt.status === "ativo" && (
+                    <Button variant="ghost" size="icon" onClick={() => cancelMutation.mutate(apt.id)} className="text-destructive hover:text-destructive">
+                      <X className="h-5 w-5" />
+                    </Button>
                   )}
                 </div>
-                {apt.status === "ativo" && (
-                  <Button variant="ghost" size="icon" onClick={() => cancelMutation.mutate(apt.id)} className="text-destructive hover:text-destructive">
-                    <X className="h-5 w-5" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
