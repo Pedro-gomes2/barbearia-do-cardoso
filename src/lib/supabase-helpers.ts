@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 export async function getAvailableSlots(date: string) {
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
-  // Get schedule config for that day
   const { data: config } = await supabase
     .from("configuracoes_agenda")
     .select("*")
@@ -13,15 +12,21 @@ export async function getAvailableSlots(date: string) {
 
   if (!config) return [];
 
-  // Generate 1-hour slots
-  const startHour = parseInt(config.hora_inicio.split(":")[0]);
-  const endHour = parseInt(config.hora_fim.split(":")[0]);
+  const intervalo = (config as any).intervalo_minutos || 60;
+
+  // Parse start/end times in minutes
+  const [sh, sm] = config.hora_inicio.split(":").map(Number);
+  const [eh, em] = config.hora_fim.split(":").map(Number);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+
   const slots: string[] = [];
-  for (let h = startHour; h < endHour; h++) {
-    slots.push(`${String(h).padStart(2, "0")}:00:00`);
+  for (let m = startMin; m < endMin; m += intervalo) {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    slots.push(`${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`);
   }
 
-  // Get booked slots
   const { data: booked } = await supabase
     .from("agendamentos")
     .select("horario")
@@ -30,7 +35,6 @@ export async function getAvailableSlots(date: string) {
 
   const bookedSet = new Set((booked || []).map((b) => b.horario));
 
-  // Get blocked slots
   const { data: blocked } = await supabase
     .from("bloqueios")
     .select("horario")
@@ -48,9 +52,9 @@ export async function createAppointment(
   nome: string,
   telefone: string,
   data: string,
-  horario: string
+  horario: string,
+  servicoId?: string
 ) {
-  // Create user
   const { data: usuario, error: userError } = await supabase
     .from("usuarios")
     .insert({ nome, telefone, tipo: "cliente" })
@@ -59,10 +63,12 @@ export async function createAppointment(
 
   if (userError) throw userError;
 
-  // Create appointment
+  const insertData: any = { cliente_id: usuario.id, data, horario };
+  if (servicoId) insertData.servico_id = servicoId;
+
   const { data: agendamento, error: agError } = await supabase
     .from("agendamentos")
-    .insert({ cliente_id: usuario.id, data, horario })
+    .insert(insertData)
     .select()
     .single();
 

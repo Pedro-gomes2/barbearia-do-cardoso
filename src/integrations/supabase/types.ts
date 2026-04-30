@@ -21,6 +21,7 @@ export type Database = {
           data: string
           horario: string
           id: string
+          servico_id: string | null
           status: Database["public"]["Enums"]["agendamento_status"]
         }
         Insert: {
@@ -29,6 +30,7 @@ export type Database = {
           data: string
           horario: string
           id?: string
+          servico_id?: string | null
           status?: Database["public"]["Enums"]["agendamento_status"]
         }
         Update: {
@@ -37,6 +39,7 @@ export type Database = {
           data?: string
           horario?: string
           id?: string
+          servico_id?: string | null
           status?: Database["public"]["Enums"]["agendamento_status"]
         }
         Relationships: [
@@ -45,6 +48,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
             referencedColumns: ["id"]
           },
         ]
@@ -80,6 +90,7 @@ export type Database = {
           hora_fim: string
           hora_inicio: string
           id: string
+          intervalo_minutos: number
         }
         Insert: {
           ativo?: boolean
@@ -87,6 +98,7 @@ export type Database = {
           hora_fim?: string
           hora_inicio?: string
           id?: string
+          intervalo_minutos?: number
         }
         Update: {
           ativo?: boolean
@@ -94,6 +106,34 @@ export type Database = {
           hora_fim?: string
           hora_inicio?: string
           id?: string
+          intervalo_minutos?: number
+        }
+        Relationships: []
+      }
+      servicos: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          duracao_minutos: number
+          id: string
+          nome: string
+          preco: number
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          duracao_minutos?: number
+          id?: string
+          nome: string
+          preco?: number
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          duracao_minutos?: number
+          id?: string
+          nome?: string
+          preco?: number
         }
         Relationships: []
       }
