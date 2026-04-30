@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agendamentos: {
+        Row: {
+          cliente_id: string
+          criado_em: string
+          data: string
+          horario: string
+          id: string
+          status: Database["public"]["Enums"]["agendamento_status"]
+        }
+        Insert: {
+          cliente_id: string
+          criado_em?: string
+          data: string
+          horario: string
+          id?: string
+          status?: Database["public"]["Enums"]["agendamento_status"]
+        }
+        Update: {
+          cliente_id?: string
+          criado_em?: string
+          data?: string
+          horario?: string
+          id?: string
+          status?: Database["public"]["Enums"]["agendamento_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bloqueios: {
+        Row: {
+          criado_em: string
+          data: string
+          horario: string
+          id: string
+          motivo: string | null
+        }
+        Insert: {
+          criado_em?: string
+          data: string
+          horario: string
+          id?: string
+          motivo?: string | null
+        }
+        Update: {
+          criado_em?: string
+          data?: string
+          horario?: string
+          id?: string
+          motivo?: string | null
+        }
+        Relationships: []
+      }
+      configuracoes_agenda: {
+        Row: {
+          ativo: boolean
+          dia_semana: number
+          hora_fim: string
+          hora_inicio: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          dia_semana: number
+          hora_fim?: string
+          hora_inicio?: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          dia_semana?: number
+          hora_fim?: string
+          hora_inicio?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      usuarios: {
+        Row: {
+          criado_em: string
+          id: string
+          nome: string
+          telefone: string
+          tipo: Database["public"]["Enums"]["user_tipo"]
+        }
+        Insert: {
+          criado_em?: string
+          id?: string
+          nome: string
+          telefone: string
+          tipo?: Database["public"]["Enums"]["user_tipo"]
+        }
+        Update: {
+          criado_em?: string
+          id?: string
+          nome?: string
+          telefone?: string
+          tipo?: Database["public"]["Enums"]["user_tipo"]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +129,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      agendamento_status: "ativo" | "cancelado"
+      user_tipo: "cliente" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +257,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      agendamento_status: ["ativo", "cancelado"],
+      user_tipo: ["cliente", "admin"],
+    },
   },
 } as const
