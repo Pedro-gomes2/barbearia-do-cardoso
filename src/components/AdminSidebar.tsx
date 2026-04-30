@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Ban, Users, Settings, LogOut, Scissors } from "lucide-react";
+import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
