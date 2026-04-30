@@ -1,46 +1,80 @@
 
-## Plano de implementação
+# Plano de Implementação — Barbearia Cardoso (7 Tasks)
 
-### 1. Tabela de serviços + seleção no fluxo do cliente
+## 1. Sidebar Admin (TASK-UI-03)
 
-**Banco de dados:**
-- Criar tabela `servicos` (id, nome, duracao_minutos, preco, ativo) com dados iniciais: Barba, Cabelo, Barba e Cabelo, Pé, Pé e Barba
-- Adicionar coluna `servico_id` (uuid, nullable) na tabela `agendamentos` referenciando `servicos`
-- RLS: leitura pública, escrita apenas autenticados
+Criar `AdminSidebar.tsx` e `AdminLayout.tsx` usando shadcn Sidebar com `collapsible="icon"`:
+- Itens: Dashboard, Agenda, Bloqueios, Clientes, Serviços
+- Botão de logout no footer
+- Responsivo com mini-collapse em mobile
+- Atualizar `App.tsx` para usar `AdminLayout` como wrapper das rotas `/admin/*` (exceto login)
+- Remover headers individuais e navegação duplicada de cada página admin
 
-**Frontend:**
-- Nova etapa no fluxo de agendamento: antes de escolher data/horário, cliente seleciona o serviço
-- Cards visuais com nome, duração e preço de cada serviço
-- Passar `servico_id` ao criar agendamento
-- Mostrar o serviço escolhido no resumo (página de dados e sucesso)
-- No admin dashboard, mostrar o serviço em cada agendamento
+## 2. Reordenar Fluxo + Dropdown (TASK-UI-01 + TASK-UI-02)
 
-### 2. Horários flexíveis (intervalos configuráveis)
+Em `Agendamento.tsx`:
+- Mudar ordem para: **Data > Serviço > Horário**
+- Data aparece primeiro, serviço só após selecionar data, horários só após selecionar serviço
+- Converter `ServiceSelector.tsx` de lista de cards para um dropdown `Select` do shadcn com scroll, exibindo nome + preço
 
-**Banco de dados:**
-- Adicionar coluna `intervalo_minutos` (smallint, default 60) na tabela `configuracoes_agenda`
+## 3. WhatsApp (TASK-BE-01)
 
-**Frontend:**
-- Na página AdminAgenda, campo para configurar o intervalo (ex: 20min, 30min, 40min)
-- Alterar `getAvailableSlots` para gerar slots baseados no `intervalo_minutos` em vez de 1h fixa
-- Slots como 09:00, 09:20, 09:40, 10:00...
+- Manter link direto do WhatsApp (gratuito, sem API paga)
+- Em `AgendamentoSucesso.tsx`, abrir automaticamente o link `wa.me` via `window.open()` ao montar o componente
+- Manter botão manual como fallback
 
-### 3. Dashboard de analytics no admin
+## 4. Horários Customizados (TASK-BE-02)
 
-**Frontend (nova página ou seção no dashboard existente):**
-- Contadores: agendamentos do dia, da semana e do mês
-- Gráfico simples de barras mostrando agendamentos por dia (últimos 30 dias)
-- Queries diretas no Supabase com filtros de data
-- Usar recharts (já disponível) para os gráficos
+**Migração SQL:** Criar tabela `horarios_customizados`:
+- `id`, `dia_semana`, `horario` (TIME), `ativo` (BOOLEAN), `criado_em`
+- Constraint UNIQUE(dia_semana, horario)
+- RLS: public SELECT, authenticated INSERT/UPDATE/DELETE
 
-### 4. Notificação WhatsApp (link direto)
+**Admin UI:** Em `AdminAgenda.tsx`, adicionar seção para:
+- Toggle entre modo "intervalo fixo" e "horários manuais"
+- Adicionar/remover horários individuais (ex: 08:00, 08:30, 09:15)
 
-- Após criar agendamento, abrir link `https://wa.me/5521995323454?text=...` com mensagem pré-formatada contendo nome, data, horário e serviço
-- Botão "Enviar WhatsApp" na página de sucesso
-- Sem custo, sem API externa
+**Lógica:** Em `getAvailableSlots`:
+- Primeiro buscar horários da tabela `horarios_customizados` para o dia
+- Se existirem, usar esses; senão, usar intervalo fixo como fallback
 
-### Detalhes técnicos
+## 5. Edição de Preços dos Serviços (novo)
 
-- 2 migrações SQL: (1) criar tabela `servicos` + seed + alter `agendamentos`, (2) alter `configuracoes_agenda`
-- Arquivos modificados: `Agendamento.tsx`, `AgendamentoDados.tsx`, `AgendamentoSucesso.tsx`, `AdminDashboard.tsx`, `AdminAgenda.tsx`, `supabase-helpers.ts`
-- Novo componente: `ServiceSelector.tsx`
+**Nova página:** `/admin/servicos` com `AdminServicos.tsx`:
+- Listar todos os serviços com nome, preço, duração
+- Permitir editar preço e duração inline
+- Permitir ativar/desativar serviço
+- Usar mutations do react-query para atualizar na tabela `servicos`
+
+## 6. Ranking de Clientes (TASK-FEAT-01)
+
+**Nova página:** `/admin/clientes` com `AdminClientes.tsx`:
+- Query: buscar `usuarios` com contagem de `agendamentos` via JOIN
+- Tabela com: posição, nome, telefone, total de agendamentos
+- Ordenação decrescente por total
+
+## 7. QA (TASK-QA-01)
+
+- Testar fluxo completo de agendamento com nova ordem
+- Verificar sidebar em mobile
+- Confirmar WhatsApp funciona
+- Validar horários customizados
+
+## Arquivos a criar
+- `src/components/AdminSidebar.tsx`
+- `src/components/AdminLayout.tsx`
+- `src/pages/AdminClientes.tsx`
+- `src/pages/AdminServicos.tsx`
+
+## Arquivos a modificar
+- `src/App.tsx` — layout admin com sidebar
+- `src/pages/Agendamento.tsx` — reordenar fluxo
+- `src/components/ServiceSelector.tsx` — converter para dropdown
+- `src/pages/AgendamentoSucesso.tsx` — auto-open WhatsApp
+- `src/pages/AdminAgenda.tsx` — horários customizados
+- `src/pages/AdminDashboard.tsx` — remover header/nav (sidebar cuida)
+- `src/pages/AdminBloqueios.tsx` — remover header/nav
+- `src/lib/supabase-helpers.ts` — lógica de horários customizados
+
+## Migração SQL necessária
+- Tabela `horarios_customizados` com RLS
