@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Check } from "lucide-react";
 
 export interface Servico {
   id: string;
@@ -11,11 +11,11 @@ export interface Servico {
 }
 
 interface ServiceSelectorProps {
-  selectedId: string | null;
-  onSelect: (servico: Servico) => void;
+  selectedIds: string[];
+  onToggle: (servico: Servico) => void;
 }
 
-export function ServiceSelector({ selectedId, onSelect }: ServiceSelectorProps) {
+export function ServiceSelector({ selectedIds, onToggle }: ServiceSelectorProps) {
   const { data: servicos = [], isLoading } = useQuery({
     queryKey: ["servicos"],
     queryFn: async () => {
@@ -33,28 +33,34 @@ export function ServiceSelector({ selectedId, onSelect }: ServiceSelectorProps) 
   }
 
   return (
-    <Select
-      value={selectedId || undefined}
-      onValueChange={(val) => {
-        const s = servicos.find((sv) => sv.id === val);
-        if (s) onSelect(s);
-      }}
-    >
-      <SelectTrigger className="w-full h-12 font-body">
-        <SelectValue placeholder="Selecione um serviço" />
-      </SelectTrigger>
-      <SelectContent>
-        {servicos.map((s) => (
-          <SelectItem key={s.id} value={s.id}>
-            <span className="flex items-center justify-between gap-4 w-full">
-              <span>{s.nome}</span>
-              <span className="text-primary font-semibold">
-                R$ {s.preco.toFixed(2).replace(".", ",")} · {s.duracao_minutos}min
-              </span>
+    <div className="space-y-2">
+      {servicos.map((s) => {
+        const selected = selectedIds.includes(s.id);
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onToggle(s)}
+            className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${
+              selected
+                ? "border-primary bg-primary/10"
+                : "border-border bg-card hover:border-primary/50"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
+                selected ? "bg-primary border-primary" : "border-muted-foreground/40"
+              }`}>
+                {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+              </div>
+              <span className="font-body text-sm">{s.nome}</span>
+            </div>
+            <span className="text-primary font-heading text-lg">
+              R$ {s.preco.toFixed(2).replace(".", ",")}
             </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+          </button>
+        );
+      })}
+    </div>
   );
 }

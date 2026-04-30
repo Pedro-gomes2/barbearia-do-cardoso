@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Save, X, DollarSign } from "lucide-react";
+import { Pencil, Save, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -20,6 +20,8 @@ export default function AdminServicos() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Servico>>({});
+  const [showNew, setShowNew] = useState(false);
+  const [newValues, setNewValues] = useState({ nome: "", preco: 0, duracao_minutos: 60 });
 
   const { data: servicos = [] } = useQuery({
     queryKey: ["admin-servicos"],
@@ -46,6 +48,28 @@ export default function AdminServicos() {
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!newValues.nome.trim()) throw new Error("Nome é obrigatório");
+      const { error } = await supabase.from("servicos").insert({
+        nome: newValues.nome.trim(),
+        preco: newValues.preco,
+        duracao_minutos: newValues.duracao_minutos,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
+      queryClient.invalidateQueries({ queryKey: ["servicos"] });
+      toast({ title: "Serviço criado!" });
+      setShowNew(false);
+      setNewValues({ nome: "", preco: 0, duracao_minutos: 60 });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
+
   const startEdit = (s: Servico) => {
     setEditingId(s.id);
     setEditValues({ preco: s.preco, duracao_minutos: s.duracao_minutos });
@@ -65,6 +89,34 @@ export default function AdminServicos() {
         <h2 className="text-3xl font-heading tracking-wider">SERVIÇOS</h2>
         <p className="text-muted-foreground font-body text-sm">Gerencie preços e duração dos serviços</p>
       </div>
+
+      <Button onClick={() => setShowNew(!showNew)} variant={showNew ? "secondary" : "default"} className="w-full font-heading tracking-widest">
+        <Plus className="h-4 w-4 mr-2" />
+        {showNew ? "CANCELAR" : "NOVO SERVIÇO"}
+      </Button>
+
+      {showNew && (
+        <div className="bg-card rounded-xl p-4 border border-primary/50 space-y-3 animate-fade-in">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground font-body">Nome do serviço</label>
+            <Input value={newValues.nome} onChange={(e) => setNewValues({ ...newValues, nome: e.target.value })} placeholder="Ex: Barba" />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1 space-y-1">
+              <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
+              <Input type="number" step="0.01" value={newValues.preco || ""} onChange={(e) => setNewValues({ ...newValues, preco: Number(e.target.value) })} />
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-xs text-muted-foreground font-body">Duração (min)</label>
+              <Input type="number" value={newValues.duracao_minutos || ""} onChange={(e) => setNewValues({ ...newValues, duracao_minutos: Number(e.target.value) })} />
+            </div>
+          </div>
+          <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="w-full font-heading tracking-widest">
+            <Save className="h-4 w-4 mr-2" />
+            {createMutation.isPending ? "SALVANDO..." : "SALVAR SERVIÇO"}
+          </Button>
+        </div>
+      )}
 
       <div className="space-y-3">
         {servicos.map((s) => {

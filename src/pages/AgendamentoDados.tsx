@@ -13,26 +13,27 @@ import type { Servico } from "@/components/ServiceSelector";
 interface LocationState {
   date: string;
   time: string;
-  servico: Servico;
+  servicos: Servico[];
 }
 
 export default function AgendamentoDados() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { date, time, servico } = (location.state as LocationState) || {};
+  const { date, time, servicos } = (location.state as LocationState) || {};
 
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (!date || !time || !servico) {
+  if (!date || !time || !servicos || servicos.length === 0) {
     navigate("/agendamento");
     return null;
   }
 
   const dateDisplay = format(parse(date, "yyyy-MM-dd", new Date()), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const timeDisplay = time.slice(0, 5);
+  const totalPrice = servicos.reduce((sum, s) => sum + s.preco, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,8 +48,8 @@ export default function AgendamentoDados() {
 
     setLoading(true);
     try {
-      await createAppointment(nome, telefone, date, time, servico.id);
-      navigate("/agendamento/sucesso", { state: { nome, date, time, servico } });
+      await createAppointment(nome, telefone, date, time, servicos.map((s) => s.id));
+      navigate("/agendamento/sucesso", { state: { nome, date, time, servicos } });
     } catch (err: any) {
       toast({ title: "Erro ao agendar", description: err.message || "Tente novamente.", variant: "destructive" });
     } finally {
@@ -73,11 +74,21 @@ export default function AgendamentoDados() {
 
         {/* Summary */}
         <div className="bg-card rounded-xl p-4 border border-border space-y-3">
-          <div className="flex items-center gap-2 text-primary">
-            <Tag className="h-5 w-5" />
-            <span className="font-body text-sm font-semibold">{servico.nome}</span>
-            <span className="ml-auto font-heading text-lg">R$ {servico.preco.toFixed(2).replace(".", ",")}</span>
-          </div>
+          {servicos.map((s) => (
+            <div key={s.id} className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-primary">
+                <Tag className="h-4 w-4" />
+                <span className="font-body text-sm">{s.nome}</span>
+              </div>
+              <span className="font-heading text-lg text-primary">R$ {s.preco.toFixed(2).replace(".", ",")}</span>
+            </div>
+          ))}
+          {servicos.length > 1 && (
+            <div className="flex items-center justify-between border-t border-border pt-2">
+              <span className="font-body text-sm font-semibold">Total</span>
+              <span className="font-heading text-lg text-primary">R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+            </div>
+          )}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-primary">
               <Calendar className="h-5 w-5" />

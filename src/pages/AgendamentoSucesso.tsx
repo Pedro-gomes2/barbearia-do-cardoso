@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -12,13 +11,12 @@ const WHATSAPP_NUMBER = "5521995323454";
 export default function AgendamentoSucesso() {
   const location = useLocation();
   const navigate = useNavigate();
-  const whatsappOpened = useRef(false);
 
-  const { nome, date, time, servico } = (location.state as {
+  const { nome, date, time, servicos } = (location.state as {
     nome: string;
     date: string;
     time: string;
-    servico?: Servico;
+    servicos?: Servico[];
   }) || {};
 
   if (!date || !time) {
@@ -28,25 +26,19 @@ export default function AgendamentoSucesso() {
 
   const dateDisplay = format(parse(date, "yyyy-MM-dd", new Date()), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const timeDisplay = time.slice(0, 5);
+  const totalPrice = (servicos || []).reduce((sum, s) => sum + s.preco, 0);
 
+  const servicosText = (servicos || []).map((s) => s.nome).join(", ");
   const whatsappMsg = encodeURIComponent(
     `Olá! Novo agendamento na Barbearia Cardoso:\n` +
     `👤 ${nome}\n` +
     `📅 ${dateDisplay}\n` +
     `🕐 ${timeDisplay}\n` +
-    (servico ? `✂️ ${servico.nome}\n` : "") +
+    (servicosText ? `✂️ ${servicosText}\n` : "") +
     `Aguardo confirmação!`
   );
 
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
-
-  // Auto-open WhatsApp on mount
-  useEffect(() => {
-    if (!whatsappOpened.current) {
-      whatsappOpened.current = true;
-      window.open(whatsappUrl, "_blank");
-    }
-  }, [whatsappUrl]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -69,10 +61,23 @@ export default function AgendamentoSucesso() {
             <span className="text-primary font-semibold text-sm font-body">Nome:</span>
             <span className="font-body">{nome}</span>
           </div>
-          {servico && (
-            <div className="flex items-center gap-3">
-              <Tag className="h-5 w-5 text-primary" />
-              <span className="font-body">{servico.nome} — R$ {servico.preco.toFixed(2).replace(".", ",")}</span>
+          {servicos && servicos.length > 0 && (
+            <div className="space-y-2">
+              {servicos.map((s) => (
+                <div key={s.id} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-primary" />
+                    <span className="font-body text-sm">{s.nome}</span>
+                  </div>
+                  <span className="text-primary font-heading">R$ {s.preco.toFixed(2).replace(".", ",")}</span>
+                </div>
+              ))}
+              {servicos.length > 1 && (
+                <div className="flex items-center justify-between border-t border-border pt-2 mt-2">
+                  <span className="font-body text-sm font-semibold">Total</span>
+                  <span className="text-primary font-heading text-lg">R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+                </div>
+              )}
             </div>
           )}
           <div className="flex items-center gap-3">

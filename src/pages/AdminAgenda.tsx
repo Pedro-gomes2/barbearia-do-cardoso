@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,8 +38,7 @@ interface HorarioCustom {
 export default function AdminAgenda() {
   const [configs, setConfigs] = useState<DayConfig[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [newTime, setNewTime] = useState("08:00");
+  const [newTimes, setNewTimes] = useState<Record<number, string>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -50,28 +48,28 @@ export default function AdminAgenda() {
     });
   }, []);
 
-  const { data: customSlots = [] } = useQuery({
-    queryKey: ["custom-slots", selectedDay],
+  // Load all custom slots
+  const { data: allCustomSlots = [] } = useQuery({
+    queryKey: ["custom-slots-all"],
     queryFn: async () => {
       const { data } = await supabase
         .from("horarios_customizados")
         .select("*")
-        .eq("dia_semana", selectedDay)
         .order("horario");
       return (data || []) as HorarioCustom[];
     },
   });
 
   const addSlotMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ dayOfWeek, time }: { dayOfWeek: number; time: string }) => {
       const { error } = await supabase.from("horarios_customizados").insert({
-        dia_semana: selectedDay,
-        horario: newTime + ":00",
+        dia_semana: dayOfWeek,
+        horario: time + ":00",
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["custom-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-slots-all"] });
       toast({ title: "Horário adicionado!" });
     },
     onError: (err: any) => {
@@ -85,7 +83,7 @@ export default function AdminAgenda() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["custom-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-slots-all"] });
       toast({ title: "Horário removido" });
     },
   });
@@ -118,21 +116,22 @@ export default function AdminAgenda() {
     }
   };
 
+  const getCustomSlotsForDay = (day: number) =>
+    allCustomSlots.filter((s) => s.dia_semana === day);
+
   return (
     <div className="container max-w-lg py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-heading tracking-wider">CONFIGURAR AGENDA</h2>
-        <p className="text-muted-foreground font-body text-sm">Horários fixos ou personalizados</p>
+        <p className="text-muted-foreground font-body text-sm">Horários fixos e manuais por dia</p>
       </div>
 
-      <Tabs defaultValue="fixed">
-        <TabsList className="w-full">
-          <TabsTrigger value="fixed" className="flex-1">Intervalo Fixo</TabsTrigger>
-          <TabsTrigger value="custom" className="flex-1">Horários Manuais</TabsTrigger>
-        </TabsList>
+      <div className="space-y-6">
+        {configs.map((config, idx) => {
+          const daySlots = getCustomSlotsForDay(config.dia_semana);
+          const newTime = newTimes[config.dia_semana] || "08:00";
 
-        <TabsContent value="fixed" className="space-y-6 mt-4">
-          {configs.map((config, idx) => (
+          return (
             <div key={config.dia_semana} className="bg-card rounded-xl p-4 border border-border space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-heading text-xl">{DAYS[config.dia_semana]}</span>
@@ -161,58 +160,49 @@ export default function AdminAgenda() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Manual extra slots */}
+                  <div className="border-t border-border pt-3 space-y-3">
+                    <Label className="text-xs text-muted-foreground">Horários manuais extras</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="time"
+                        value={newTime}
+                        onChange={(e) => setNewTimes({ ...newTimes, [config.dia_semana]: e.target.value })}
+                        className="flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => addSlotMutation.mutate({ dayOfWeek: config.dia_semana, time: newTime })}
+                        disabled={addSlotMutation.isPending}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Adicionar
+                      </Button>
+                    </div>
+                    {daySlots.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {daySlots.map((slot) => (
+                          <div key={slot.id} className="bg-primary/10 border border-primary/30 rounded-lg px-3 py-1 flex items-center gap-2">
+                            <span className="font-heading text-sm text-primary">{slot.horario?.slice(0, 5)}</span>
+                            <button onClick={() => deleteSlotMutation.mutate(slot.id)} className="text-destructive hover:text-destructive/80">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-          ))}
+          );
+        })}
+      </div>
 
-          <Button onClick={handleSave} disabled={loading} className="w-full py-6 font-heading tracking-widest text-lg" size="lg">
-            <Save className="mr-2 h-5 w-5" />
-            {loading ? "SALVANDO..." : "SALVAR CONFIGURAÇÕES"}
-          </Button>
-        </TabsContent>
-
-        <TabsContent value="custom" className="space-y-6 mt-4">
-          <div className="bg-card rounded-xl p-4 border border-border space-y-4">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Dia da semana</Label>
-              <Select value={String(selectedDay)} onValueChange={(v) => setSelectedDay(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DAYS.map((d, i) => (
-                    <SelectItem key={i} value={String(i)}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-2">
-              <Input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} className="flex-1" />
-              <Button onClick={() => addSlotMutation.mutate()} disabled={addSlotMutation.isPending}>
-                <Plus className="h-4 w-4 mr-1" /> Adicionar
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-heading text-lg">{DAYS[selectedDay]} — Horários</h3>
-            {customSlots.length === 0 ? (
-              <p className="text-muted-foreground font-body text-sm text-center py-4">
-                Nenhum horário manual. O sistema usará o intervalo fixo.
-              </p>
-            ) : (
-              customSlots.map((slot) => (
-                <div key={slot.id} className="bg-card rounded-xl p-3 border border-border flex items-center justify-between">
-                  <span className="font-heading text-lg text-primary">{slot.horario?.slice(0, 5)}</span>
-                  <Button variant="ghost" size="icon" onClick={() => deleteSlotMutation.mutate(slot.id)} className="text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+      <Button onClick={handleSave} disabled={loading} className="w-full py-6 font-heading tracking-widest text-lg" size="lg">
+        <Save className="mr-2 h-5 w-5" />
+        {loading ? "SALVANDO..." : "SALVAR CONFIGURAÇÕES"}
+      </Button>
     </div>
   );
 }
