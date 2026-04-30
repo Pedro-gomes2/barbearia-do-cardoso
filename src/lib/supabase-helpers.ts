@@ -3,43 +3,50 @@ import { supabase } from "@/integrations/supabase/client";
 export async function getAvailableSlots(date: string) {
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
-  const { data: config } = await supabase
-    .from("configuracoes_agenda")
-    .select("*")
+  // Check for custom slots first
+  const { data: customSlots } = await supabase
+    .from("horarios_customizados")
+    .select("horario")
     .eq("dia_semana", dayOfWeek)
     .eq("ativo", true)
-    .single();
+    .order("horario");
 
-  if (!config) return [];
+  let slots: string[] = [];
 
-  const intervalo = (config as any).intervalo_minutos || 60;
+  if (customSlots && customSlots.length > 0) {
+    // Use custom slots
+    slots = customSlots.map((s) => s.horario);
+  } else {
+    // Fallback to fixed interval
+    const { data: config } = await supabase
+      .from("configuracoes_agenda")
+      .select("*")
+      .eq("dia_semana", dayOfWeek)
+      .eq("ativo", true)
+      .single();
 
-  // Parse start/end times in minutes
-  const [sh, sm] = config.hora_inicio.split(":").map(Number);
-  const [eh, em] = config.hora_fim.split(":").map(Number);
-  const startMin = sh * 60 + sm;
-  const endMin = eh * 60 + em;
+    if (!config) return [];
 
-  const slots: string[] = [];
-  for (let m = startMin; m < endMin; m += intervalo) {
-    const h = Math.floor(m / 60);
-    const min = m % 60;
-    slots.push(`${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`);
+    const intervalo = (config as any).intervalo_minutos || 60;
+    const [sh, sm] = config.hora_inicio.split(":").map(Number);
+    const [eh, em] = config.hora_fim.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+
+    for (let m = startMin; m < endMin; m += intervalo) {
+      const h = Math.floor(m / 60);
+      const min = m % 60;
+      slots.push(`${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`);
+    }
   }
 
-  const { data: booked } = await supabase
-    .from("agendamentos")
-    .select("horario")
-    .eq("data", date)
-    .eq("status", "ativo");
+  // Filter booked and blocked
+  const [{ data: booked }, { data: blocked }] = await Promise.all([
+    supabase.from("agendamentos").select("horario").eq("data", date).eq("status", "ativo"),
+    supabase.from("bloqueios").select("horario").eq("data", date),
+  ]);
 
   const bookedSet = new Set((booked || []).map((b) => b.horario));
-
-  const { data: blocked } = await supabase
-    .from("bloqueios")
-    .select("horario")
-    .eq("data", date);
-
   const blockedSet = new Set((blocked || []).map((b) => b.horario));
 
   return slots.map((slot) => ({

@@ -1,8 +1,10 @@
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle, Calendar, Clock, Scissors, Tag, MessageCircle } from "lucide-react";
+import { CheckCircle, Calendar, Clock, Tag, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Scissors } from "lucide-react";
 import type { Servico } from "@/components/ServiceSelector";
 
 const WHATSAPP_NUMBER = "5521995323454";
@@ -10,6 +12,8 @@ const WHATSAPP_NUMBER = "5521995323454";
 export default function AgendamentoSucesso() {
   const location = useLocation();
   const navigate = useNavigate();
+  const whatsappOpened = useRef(false);
+
   const { nome, date, time, servico } = (location.state as {
     nome: string;
     date: string;
@@ -35,6 +39,14 @@ export default function AgendamentoSucesso() {
   );
 
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
+
+  // Auto-open WhatsApp on mount
+  useEffect(() => {
+    if (!whatsappOpened.current) {
+      whatsappOpened.current = true;
+      window.open(whatsappUrl, "_blank");
+    }
+  }, [whatsappUrl]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -73,12 +85,7 @@ export default function AgendamentoSucesso() {
           </div>
         </div>
 
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full"
-        >
+        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full">
           <Button className="w-full py-6 text-lg font-heading tracking-widest bg-[#25D366] hover:bg-[#1da851] text-white" size="lg">
             <MessageCircle className="mr-2 h-5 w-5" />
             ENVIAR WHATSAPP

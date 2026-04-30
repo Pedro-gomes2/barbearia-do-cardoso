@@ -1,7 +1,6 @@
-import { cn } from "@/lib/utils";
-import { Scissors } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export interface Servico {
   id: string;
@@ -30,35 +29,32 @@ export function ServiceSelector({ selectedId, onSelect }: ServiceSelectorProps) 
   });
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Carregando serviços...</div>;
+    return <div className="text-center py-4 text-muted-foreground font-body">Carregando serviços...</div>;
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3">
-      {servicos.map((s) => {
-        const isSelected = selectedId === s.id;
-        return (
-          <button
-            key={s.id}
-            onClick={() => onSelect(s)}
-            className={cn(
-              "w-full p-4 rounded-xl border text-left transition-all duration-200 flex items-center gap-4",
-              isSelected
-                ? "border-primary bg-primary/10 shadow-lg shadow-primary/20"
-                : "border-border bg-card hover:border-primary/50 hover:bg-primary/5"
-            )}
-          >
-            <Scissors className={cn("h-5 w-5 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
-            <div className="flex-1 min-w-0">
-              <p className="font-heading text-lg tracking-wide">{s.nome.toUpperCase()}</p>
-              <p className="text-sm text-muted-foreground font-body">{s.duracao_minutos} min</p>
-            </div>
-            <span className="font-heading text-xl text-primary">
-              R$ {s.preco.toFixed(2).replace(".", ",")}
+    <Select
+      value={selectedId || undefined}
+      onValueChange={(val) => {
+        const s = servicos.find((sv) => sv.id === val);
+        if (s) onSelect(s);
+      }}
+    >
+      <SelectTrigger className="w-full h-12 font-body">
+        <SelectValue placeholder="Selecione um serviço" />
+      </SelectTrigger>
+      <SelectContent>
+        {servicos.map((s) => (
+          <SelectItem key={s.id} value={s.id}>
+            <span className="flex items-center justify-between gap-4 w-full">
+              <span>{s.nome}</span>
+              <span className="text-primary font-semibold">
+                R$ {s.preco.toFixed(2).replace(".", ",")} · {s.duracao_minutos}min
+              </span>
             </span>
-          </button>
-        );
-      })}
-    </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
