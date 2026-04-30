@@ -1,33 +1,31 @@
 
-## Plano de Ajustes — Barbearia Cardoso
+## Plano de Melhorias — Barbearia Cardoso
 
-### 1. Admin Serviços — Adicionar novos serviços
-Botão "Novo Serviço" em `AdminServicos.tsx` com formulário inline (nome, preço, duração). Insere na tabela `servicos`.
+### 1. Favicon de tesoura de barbeiro
+- Gerar um ícone SVG de tesoura de barbeiro no estilo dourado/gold do tema
+- Adicionar como favicon no `index.html`
 
-### 2. Remover página Clientes do admin
-Remover rota `/admin/clientes`, link no sidebar e arquivo `AdminClientes.tsx`.
+### 2. Domingos permanecem na agenda
+- Nenhuma alteração necessária — os domingos já estão configurados na agenda admin e podem ser ativados/desativados pelo Switch. Vou garantir que continuem funcionando normalmente.
 
-### 3. Agenda — Horários manuais dentro do intervalo fixo
-Remover a aba "Horários Manuais" separada. Dentro de cada dia, adicionar campo para inserir horários extras (ex: 9:20, 9:40) que complementam os slots do intervalo fixo. Listados abaixo da config do dia com opção de remover.
+### 3. Dashboard Admin — Exibir todos os serviços do agendamento
+- Atualizar `AdminDashboard.tsx` para buscar e exibir os serviços da tabela `agendamento_servicos` (não só o `servico_id` direto)
+- Layout lado a lado (calendário + lista) em desktop
 
-### 4. Dashboard — Melhorar layout
-Melhorar visibilidade do filtro por dia e lista de reservas, colocando lado a lado em desktop.
+### 4. Landing Page — Seção de serviços e preços
+- Adicionar seção na `Index.tsx` que puxa os serviços ativos do banco e mostra nome + preço
+- Adicionar informações de contato/endereço
 
-### 5. WhatsApp — Simplificar
-Remover auto-open do WhatsApp. Manter apenas botão manual "Enviar WhatsApp" na tela de sucesso.
+### 5. WhatsApp — Fallback copiar mensagem
+- Adicionar botão secundário "Copiar mensagem" na tela de sucesso, caso o `wa.me` não funcione no navegador
 
-### 6. Seletor de serviço — Ajustes visuais
-- Remover duração (minutos) do dropdown
-- Preço mais à direita e com melhor destaque
-
-### 7. Multi-serviço no agendamento
-Permitir selecionar múltiplos serviços. Criar tabela `agendamento_servicos` (agendamento_id, servico_id) com RLS. Ajustar `ServiceSelector` para multi-select, `createAppointment` para salvar múltiplos, e telas de resumo/sucesso.
-
-### 8. Estrutura do banco de dados
-Manter todas as tabelas atuais (`servicos`, `agendamentos`, `usuarios`, `configuracoes_agenda`, `horarios_customizados`, `bloqueios`). Adicionar apenas a tabela de junção `agendamento_servicos`. Garantir RLS em todas as tabelas.
+### 6. Meta tags e SEO
+- Atualizar Open Graph image para algo personalizado da barbearia
+- Ajustar meta tags existentes
 
 ### Arquivos afetados
-- **Criados:** nenhum novo componente (ajustes nos existentes)
-- **Migração SQL:** tabela `agendamento_servicos`
-- **Modificados:** `AdminServicos.tsx`, `AdminSidebar.tsx`, `App.tsx`, `AdminAgenda.tsx`, `AdminDashboard.tsx`, `AgendamentoSucesso.tsx`, `ServiceSelector.tsx`, `Agendamento.tsx`, `AgendamentoDados.tsx`, `supabase-helpers.ts`
-- **Removidos:** `AdminClientes.tsx`
+- `index.html` — favicon
+- `public/favicon.svg` — novo arquivo
+- `src/pages/Index.tsx` — seção de serviços
+- `src/pages/AdminDashboard.tsx` — layout e multi-serviço
+- `src/pages/AgendamentoSucesso.tsx` — botão copiar mensagem
