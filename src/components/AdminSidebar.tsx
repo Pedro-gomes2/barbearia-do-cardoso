@@ -20,7 +20,6 @@ const items = [
   { title: "Dashboard", url: "/admin/dashboard", icon: BarChart3 },
   { title: "Agenda", url: "/admin/agenda", icon: CalendarDays },
   { title: "Bloqueios", url: "/admin/bloqueios", icon: Ban },
-  { title: "Clientes", url: "/admin/clientes", icon: Users },
   { title: "Serviços", url: "/admin/servicos", icon: Settings },
 ];
 

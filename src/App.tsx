@@ -13,7 +13,6 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminAgenda from "./pages/AdminAgenda";
 import AdminBloqueios from "./pages/AdminBloqueios";
-import AdminClientes from "./pages/AdminClientes";
 import AdminServicos from "./pages/AdminServicos";
 import NotFound from "./pages/NotFound";
 
@@ -35,7 +34,6 @@ const App = () => (
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/agenda" element={<AdminAgenda />} />
             <Route path="/admin/bloqueios" element={<AdminBloqueios />} />
-            <Route path="/admin/clientes" element={<AdminClientes />} />
             <Route path="/admin/servicos" element={<AdminServicos />} />
           </Route>
           <Route path="*" element={<NotFound />} />
