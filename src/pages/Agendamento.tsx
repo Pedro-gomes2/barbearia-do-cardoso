@@ -12,8 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function Agendamento() {
   const navigate = useNavigate();
-  const [servico, setServico] = useState<Servico | null>(null);
   const [date, setDate] = useState<Date>();
+  const [servico, setServico] = useState<Servico | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
   const dateStr = date ? format(date, "yyyy-MM-dd") : null;
@@ -46,40 +46,40 @@ export default function Agendamento() {
       <main className="container max-w-lg py-8 space-y-8 animate-fade-in">
         <div className="text-center space-y-2">
           <h2 className="text-4xl">AGENDE SEU HORÁRIO</h2>
-          <p className="text-muted-foreground">Escolha o serviço, data e horário</p>
+          <p className="text-muted-foreground">Escolha a data, serviço e horário</p>
         </div>
 
-        {/* Service selection */}
+        {/* 1. Calendar — always visible */}
         <div className="bg-card rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-4 text-primary">
-            <Scissors className="h-5 w-5" />
-            <span className="font-semibold text-sm uppercase tracking-wide font-body">Escolha o serviço</span>
+            <CalendarIcon className="h-5 w-5" />
+            <span className="font-semibold text-sm uppercase tracking-wide font-body">Selecione a data</span>
           </div>
-          <ServiceSelector selectedId={servico?.id || null} onSelect={setServico} />
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => {
+              setDate(d);
+              setSelectedTime(null);
+            }}
+            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+            locale={ptBR}
+            className="pointer-events-auto mx-auto"
+          />
         </div>
 
-        {/* Calendar */}
-        {servico && (
+        {/* 2. Service selection — after date */}
+        {date && (
           <div className="bg-card rounded-xl p-4 border border-border animate-fade-in">
             <div className="flex items-center gap-2 mb-4 text-primary">
-              <CalendarIcon className="h-5 w-5" />
-              <span className="font-semibold text-sm uppercase tracking-wide font-body">Selecione a data</span>
+              <Scissors className="h-5 w-5" />
+              <span className="font-semibold text-sm uppercase tracking-wide font-body">Escolha o serviço</span>
             </div>
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={(d) => {
-                setDate(d);
-                setSelectedTime(null);
-              }}
-              disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-              locale={ptBR}
-              className="pointer-events-auto mx-auto"
-            />
+            <ServiceSelector selectedId={servico?.id || null} onSelect={setServico} />
           </div>
         )}
 
-        {/* Time slots */}
+        {/* 3. Time slots — after date + service */}
         {dateStr && servico && (
           <div className="bg-card rounded-xl p-4 border border-border animate-fade-in">
             <div className="flex items-center gap-2 mb-4 text-primary">
