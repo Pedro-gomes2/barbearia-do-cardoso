@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      agendamento_servicos: {
+        Row: {
+          agendamento_id: string
+          criado_em: string
+          id: string
+          servico_id: string
+        }
+        Insert: {
+          agendamento_id: string
+          criado_em?: string
+          id?: string
+          servico_id: string
+        }
+        Update: {
+          agendamento_id?: string
+          criado_em?: string
+          id?: string
+          servico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamento_servicos_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamento_servicos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agendamentos: {
         Row: {
           cliente_id: string
