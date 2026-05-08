@@ -4,20 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const INTERVALS = [
-  { value: "15", label: "15 min" },
-  { value: "20", label: "20 min" },
-  { value: "30", label: "30 min" },
-  { value: "40", label: "40 min" },
-  { value: "45", label: "45 min" },
-  { value: "60", label: "1 hora" },
-];
 
 interface DayConfig {
   id?: string;
@@ -139,27 +130,6 @@ export default function AdminAgenda() {
               </div>
               {config.ativo && (
                 <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Início</Label>
-                      <Input type="time" value={config.hora_inicio?.slice(0, 5)} onChange={(e) => updateConfig(idx, "hora_inicio", e.target.value + ":00")} />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Fim</Label>
-                      <Input type="time" value={config.hora_fim?.slice(0, 5)} onChange={(e) => updateConfig(idx, "hora_fim", e.target.value + ":00")} />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Intervalo entre horários</Label>
-                    <Select value={String(config.intervalo_minutos || 60)} onValueChange={(v) => updateConfig(idx, "intervalo_minutos", Number(v))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {INTERVALS.map((i) => (
-                          <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
 
                   {/* Manual extra slots */}
                   <div className="border-t border-border pt-3 space-y-3">

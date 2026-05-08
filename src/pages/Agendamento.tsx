@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Scissors } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { TimeSlotGrid } from "@/components/TimeSlotGrid";
 import { ServiceSelector, type Servico } from "@/components/ServiceSelector";
+import { WeekPicker } from "@/components/WeekPicker";
 import { getAvailableSlots } from "@/lib/supabase-helpers";
 import { useQuery } from "@tanstack/react-query";
 
@@ -65,16 +65,12 @@ export default function Agendamento() {
             <CalendarIcon className="h-5 w-5" />
             <span className="font-semibold text-sm uppercase tracking-wide font-body">Selecione a data</span>
           </div>
-          <Calendar
-            mode="single"
+          <WeekPicker
             selected={date}
             onSelect={(d) => {
               setDate(d);
               setSelectedTime(null);
             }}
-            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-            locale={ptBR}
-            className="pointer-events-auto mx-auto"
           />
         </div>
 

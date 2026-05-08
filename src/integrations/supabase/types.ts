@@ -52,6 +52,7 @@ export type Database = {
       }
       agendamentos: {
         Row: {
+          cancel_token: string
           cliente_id: string
           criado_em: string
           data: string
@@ -59,8 +60,10 @@ export type Database = {
           id: string
           servico_id: string | null
           status: Database["public"]["Enums"]["agendamento_status"]
+          telefone_cliente: string | null
         }
         Insert: {
+          cancel_token?: string
           cliente_id: string
           criado_em?: string
           data: string
@@ -68,8 +71,10 @@ export type Database = {
           id?: string
           servico_id?: string | null
           status?: Database["public"]["Enums"]["agendamento_status"]
+          telefone_cliente?: string | null
         }
         Update: {
+          cancel_token?: string
           cliente_id?: string
           criado_em?: string
           data?: string
@@ -77,6 +82,7 @@ export type Database = {
           id?: string
           servico_id?: string | null
           status?: Database["public"]["Enums"]["agendamento_status"]
+          telefone_cliente?: string | null
         }
         Relationships: [
           {
@@ -143,6 +149,93 @@ export type Database = {
           hora_inicio?: string
           id?: string
           intervalo_minutos?: number
+        }
+        Relationships: []
+      }
+      configuracoes_app: {
+        Row: {
+          atualizado_em: string
+          id: string
+          pix_chave: string | null
+          pix_cidade: string | null
+          pix_nome_titular: string | null
+          whatsapp_admin: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          id?: string
+          pix_chave?: string | null
+          pix_cidade?: string | null
+          pix_nome_titular?: string | null
+          whatsapp_admin?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          id?: string
+          pix_chave?: string | null
+          pix_cidade?: string | null
+          pix_nome_titular?: string | null
+          whatsapp_admin?: string | null
+        }
+        Relationships: []
+      }
+      fila_atendimento: {
+        Row: {
+          atualizado_em: string
+          cliente_id: string
+          criado_em: string
+          data: string
+          id: string
+          posicao: number
+          servico_id: string | null
+          status: Database["public"]["Enums"]["fila_status"]
+        }
+        Insert: {
+          atualizado_em?: string
+          cliente_id: string
+          criado_em?: string
+          data: string
+          id?: string
+          posicao: number
+          servico_id?: string | null
+          status?: Database["public"]["Enums"]["fila_status"]
+        }
+        Update: {
+          atualizado_em?: string
+          cliente_id?: string
+          criado_em?: string
+          data?: string
+          id?: string
+          posicao?: number
+          servico_id?: string | null
+          status?: Database["public"]["Enums"]["fila_status"]
+        }
+        Relationships: []
+      }
+      fila_config: {
+        Row: {
+          aberta: boolean
+          criado_em: string
+          data: string
+          hora_abertura: string
+          hora_fechamento: string
+          id: string
+        }
+        Insert: {
+          aberta?: boolean
+          criado_em?: string
+          data: string
+          hora_abertura?: string
+          hora_fechamento?: string
+          id?: string
+        }
+        Update: {
+          aberta?: boolean
+          criado_em?: string
+          data?: string
+          hora_abertura?: string
+          hora_fechamento?: string
+          id?: string
         }
         Relationships: []
       }
@@ -226,10 +319,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cancelar_agendamento_por_telefone: {
+        Args: { _agendamento_id: string; _telefone: string }
+        Returns: boolean
+      }
     }
     Enums: {
       agendamento_status: "ativo" | "cancelado"
+      fila_status: "aguardando" | "atendendo" | "finalizado" | "cancelado"
       user_tipo: "cliente" | "admin"
     }
     CompositeTypes: {
@@ -359,6 +456,7 @@ export const Constants = {
   public: {
     Enums: {
       agendamento_status: ["ativo", "cancelado"],
+      fila_status: ["aguardando", "atendendo", "finalizado", "cancelado"],
       user_tipo: ["cliente", "admin"],
     },
   },
