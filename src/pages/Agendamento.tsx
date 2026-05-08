@@ -65,17 +65,13 @@ export default function Agendamento() {
             <CalendarIcon className="h-5 w-5" />
             <span className="font-semibold text-sm uppercase tracking-wide font-body">Selecione a data</span>
           </div>
-          <Calendar
-            mode="single"
+          <WeekPicker
             selected={date}
             onSelect={(d) => {
               setDate(d);
               setSelectedTime(null);
             }}
-            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-            locale={ptBR}
-            className="pointer-events-auto mx-auto"
-          />Z_REMOVE_ME
+          />
         </div>
 
         {/* 2. Service selection — multi */}
