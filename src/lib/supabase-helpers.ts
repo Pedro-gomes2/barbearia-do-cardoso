@@ -14,30 +14,10 @@ export async function getAvailableSlots(date: string) {
   let slots: string[] = [];
 
   if (customSlots && customSlots.length > 0) {
-    // Use custom slots
     slots = customSlots.map((s) => s.horario);
   } else {
-    // Fallback to fixed interval
-    const { data: config } = await supabase
-      .from("configuracoes_agenda")
-      .select("*")
-      .eq("dia_semana", dayOfWeek)
-      .eq("ativo", true)
-      .single();
-
-    if (!config) return [];
-
-    const intervalo = (config as any).intervalo_minutos || 60;
-    const [sh, sm] = config.hora_inicio.split(":").map(Number);
-    const [eh, em] = config.hora_fim.split(":").map(Number);
-    const startMin = sh * 60 + sm;
-    const endMin = eh * 60 + em;
-
-    for (let m = startMin; m < endMin; m += intervalo) {
-      const h = Math.floor(m / 60);
-      const min = m % 60;
-      slots.push(`${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`);
-    }
+    // Sem horários manuais cadastrados — dia indisponível
+    return [];
   }
 
   // Filter booked and blocked
