@@ -4,20 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const INTERVALS = [
-  { value: "15", label: "15 min" },
-  { value: "20", label: "20 min" },
-  { value: "30", label: "30 min" },
-  { value: "40", label: "40 min" },
-  { value: "45", label: "45 min" },
-  { value: "60", label: "1 hora" },
-];
 
 interface DayConfig {
   id?: string;
