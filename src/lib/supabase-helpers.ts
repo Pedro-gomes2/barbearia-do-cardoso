@@ -70,8 +70,12 @@ export async function createAppointment(
 
   if (userError) throw userError;
 
-  const insertData: any = { cliente_id: usuario.id, data, horario };
-  // Keep first servico_id for backward compat
+  const insertData: any = {
+    cliente_id: usuario.id,
+    data,
+    horario,
+    telefone_cliente: telefone.replace(/\D/g, ""),
+  };
   if (servicoIds.length > 0) insertData.servico_id = servicoIds[0];
 
   const { data: agendamento, error: agError } = await supabase
