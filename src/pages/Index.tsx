@@ -87,6 +87,15 @@ export default function Index() {
           AGENDAR AGORA
         </Button>
 
+        <div className="grid grid-cols-2 gap-3">
+          <Button onClick={() => navigate("/fila")} variant="outline" className="py-5 font-heading tracking-widest" size="lg">
+            ENTRAR NA FILA
+          </Button>
+          <Button onClick={() => navigate("/cancelar")} variant="outline" className="py-5 font-heading tracking-widest" size="lg">
+            CANCELAR
+          </Button>
+        </div>
+
         {/* Contact */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
           <div className="bg-card rounded-xl p-4 border border-border flex items-center justify-center gap-3">
