@@ -15,19 +15,27 @@ import {
   parse,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, X, BarChart3, ChevronLeft, ChevronRight, Search, MessageCircle } from "lucide-react";
+import { CalendarDays, X, ChevronLeft, ChevronRight, Search, MessageCircle, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { ServiceSelector, type Servico } from "@/components/ServiceSelector";
 
 type StatusFilter = "todos" | "ativo" | "cancelado";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState<"dia" | "semana" | "mes">("dia");
+  const [encaixeAberto, setEncaixeAberto] = useState(false);
+  const [encaixeNome, setEncaixeNome] = useState("");
+  const [encaixeTelefone, setEncaixeTelefone] = useState("");
+  const [encaixeData, setEncaixeData] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [encaixeHorario, setEncaixeHorario] = useState("09:00");
+  const [encaixeServicos, setEncaixeServicos] = useState<Servico[]>([]);
   const [refDate, setRefDate] = useState<Date>(new Date());
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ativo");
@@ -139,6 +147,54 @@ export default function AdminDashboard() {
     },
   });
 
+  const encaixeMutation = useMutation({
+    mutationFn: async () => {
+      if (!encaixeNome.trim()) throw new Error("Informe o nome do cliente");
+      const tel = encaixeTelefone.replace(/\D/g, "");
+      if (tel.length < 10) throw new Error("Telefone inválido");
+      if (encaixeServicos.length === 0) throw new Error("Selecione ao menos um serviço");
+
+      const { data: usuario, error: uErr } = await supabase
+        .from("usuarios")
+        .insert({ nome: encaixeNome.trim(), telefone: tel, tipo: "cliente" })
+        .select()
+        .single();
+      if (uErr) throw uErr;
+
+      const { data: ag, error: agErr } = await supabase
+        .from("agendamentos")
+        .insert({
+          cliente_id: usuario.id,
+          data: encaixeData,
+          horario: encaixeHorario + ":00",
+          telefone_cliente: tel,
+          servico_id: encaixeServicos[0].id,
+        })
+        .select()
+        .single();
+      if (agErr) throw agErr;
+
+      if (encaixeServicos.length > 0) {
+        await supabase.from("agendamento_servicos").insert(
+          encaixeServicos.map((s) => ({ agendamento_id: ag.id, servico_id: s.id }))
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      toast({ title: "Encaixe criado!" });
+      setEncaixeNome("");
+      setEncaixeTelefone("");
+      setEncaixeHorario("09:00");
+      setEncaixeServicos([]);
+      setEncaixeAberto(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
+
   // Navigation
   const navPrev = () => setRefDate(tab === "dia" ? subDays(refDate, 1) : tab === "semana" ? subWeeks(refDate, 1) : subMonths(refDate, 1));
   const navNext = () => setRefDate(tab === "dia" ? addDays(refDate, 1) : tab === "semana" ? addWeeks(refDate, 1) : addMonths(refDate, 1));
@@ -170,6 +226,64 @@ export default function AdminDashboard() {
             <p className="text-xs text-muted-foreground font-body mt-1">{s.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Encaixe */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <button
+          onClick={() => setEncaixeAberto((v) => !v)}
+          className="w-full flex items-center justify-between p-4 text-left"
+        >
+          <div className="flex items-center gap-2 text-primary">
+            <Plus className="h-5 w-5" />
+            <span className="font-heading text-lg tracking-wider">ENCAIXE MANUAL</span>
+          </div>
+          {encaixeAberto ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+        </button>
+
+        {encaixeAberto && (
+          <div className="px-4 pb-4 border-t border-border space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Nome do cliente</Label>
+                <Input value={encaixeNome} onChange={(e) => setEncaixeNome(e.target.value)} placeholder="Nome completo" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Telefone</Label>
+                <Input value={encaixeTelefone} onChange={(e) => setEncaixeTelefone(e.target.value)} placeholder="(21) 99999-9999" maxLength={20} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Data</Label>
+                <Input type="date" value={encaixeData} onChange={(e) => setEncaixeData(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Horário</Label>
+                <Input type="time" value={encaixeHorario} onChange={(e) => setEncaixeHorario(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Serviços</Label>
+              <ServiceSelector
+                selectedIds={encaixeServicos.map((s) => s.id)}
+                onToggle={(s) =>
+                  setEncaixeServicos((prev) =>
+                    prev.find((x) => x.id === s.id) ? prev.filter((x) => x.id !== s.id) : [...prev, s]
+                  )
+                }
+              />
+            </div>
+            <Button
+              onClick={() => encaixeMutation.mutate()}
+              disabled={encaixeMutation.isPending}
+              className="w-full font-heading tracking-widest"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {encaixeMutation.isPending ? "SALVANDO..." : "CRIAR ENCAIXE"}
+            </Button>
+          </div>
+        )}
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>

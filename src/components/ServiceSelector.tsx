@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Check } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 
 export interface Servico {
   id: string;
@@ -53,7 +53,12 @@ export function ServiceSelector({ selectedIds, onToggle }: ServiceSelectorProps)
               }`}>
                 {selected && <Check className="h-3 w-3 text-primary-foreground" />}
               </div>
-              <span className="font-body text-sm">{s.nome}</span>
+              <div className="text-left">
+                <p className="font-body text-sm">{s.nome}</p>
+                <p className="font-body text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> {s.duracao_minutos} min
+                </p>
+              </div>
             </div>
             <span className="text-primary font-heading text-lg">
               R$ {s.preco.toFixed(2).replace(".", ",")}
