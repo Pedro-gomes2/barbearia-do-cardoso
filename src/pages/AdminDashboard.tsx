@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
-type StatusFilter = "todos" | "ativo" | "cancelado" | "finalizado";
+type StatusFilter = "todos" | "ativo" | "cancelado";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState<"dia" | "semana" | "mes">("dia");
@@ -203,7 +203,6 @@ export default function AdminDashboard() {
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="ativo">Ativos</SelectItem>
               <SelectItem value="cancelado">Cancelados</SelectItem>
-              <SelectItem value="finalizado">Finalizados</SelectItem>
             </SelectContent>
           </Select>
         </div>

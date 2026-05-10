@@ -115,13 +115,16 @@ export default function AdminAgenda() {
   });
 
   const enviarLembrete = (ag: any) => {
+    const telefone = ag.telefone_cliente?.replace(/\D/g, "") || "";
+    if (!telefone) {
+      toast({ title: "Cliente sem telefone", description: "Não é possível enviar lembrete.", variant: "destructive" });
+      return;
+    }
     const nome = ag.usuarios?.nome || "Cliente";
     const horario = ag.horario?.slice(0, 5) || "";
     const dateDisplay = format(new Date(), "dd 'de' MMMM", { locale: ptBR });
-    const telefone = ag.telefone_cliente?.replace(/\D/g, "") || "";
     const msg = `Olá ${nome}! Lembrando do seu agendamento hoje, ${dateDisplay}, às ${horario}. Até logo! ✂️`;
-    const numero = telefone || (cfgApp?.whatsapp_admin || FALLBACK_WHATSAPP);
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/${telefone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
   const getCustomSlotsForDay = (day: number) => allCustomSlots.filter((s) => s.dia_semana === day);
