@@ -18,6 +18,7 @@ import AdminBloqueios from "./pages/AdminBloqueios";
 import AdminServicos from "./pages/AdminServicos";
 import AdminFila from "./pages/AdminFila";
 import AdminConfiguracoes from "./pages/AdminConfiguracoes";
+import AdminHorarios from "./pages/AdminHorarios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/admin/bloqueios" element={<AdminBloqueios />} />
             <Route path="/admin/servicos" element={<AdminServicos />} />
             <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
+            <Route path="/admin/horarios" element={<AdminHorarios />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

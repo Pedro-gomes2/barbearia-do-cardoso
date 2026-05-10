@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Users, Wrench } from "lucide-react";
+import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Users, Wrench, Clock } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const items = [
   { title: "Fila", url: "/admin/fila", icon: Users },
   { title: "Bloqueios", url: "/admin/bloqueios", icon: Ban },
   { title: "Serviços", url: "/admin/servicos", icon: Wrench },
+  { title: "Horários", url: "/admin/horarios", icon: Clock },
   { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
 ];
 
