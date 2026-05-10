@@ -106,7 +106,7 @@ export default function Fila() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container flex items-center gap-2 py-4">
           <Scissors className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl tracking-wider">BARBEARIA CARDOSO</h1>
+          <h1 className="text-2xl tracking-wider">BARBEARIA</h1>
         </div>
       </header>
 

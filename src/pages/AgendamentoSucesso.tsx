@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle, Calendar, Clock, Tag, MessageCircle, Copy, X, Scissors } from "lucide-react";
+import { CheckCircle, Calendar, Clock, Tag, MessageCircle, AlertCircle, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { PixQR } from "@/components/PixQR";
 import type { Servico } from "@/components/ServiceSelector";
 
 const FALLBACK_WHATSAPP = "5521995323454";
@@ -14,7 +12,6 @@ const FALLBACK_WHATSAPP = "5521995323454";
 export default function AgendamentoSucesso() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const { nome, date, time, servicos } = (location.state as {
     nome: string;
@@ -24,6 +21,7 @@ export default function AgendamentoSucesso() {
   }) || {};
 
   const [cfg, setCfg] = useState<any>(null);
+  const [whatsappEnviado, setWhatsappEnviado] = useState(false);
 
   useEffect(() => {
     supabase.from("configuracoes_app").select("*").limit(1).maybeSingle().then(({ data }) => setCfg(data));
@@ -41,7 +39,7 @@ export default function AgendamentoSucesso() {
 
   const servicosText = (servicos || []).map((s) => s.nome).join(", ");
   const messageText =
-    `Olá! Novo agendamento na Barbearia Cardoso:\n` +
+    `Olá! Novo agendamento na Barbearia:\n` +
     `👤 ${nome}\n` +
     `📅 ${dateDisplay}\n` +
     `🕐 ${timeDisplay}\n` +
@@ -50,32 +48,30 @@ export default function AgendamentoSucesso() {
 
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(messageText)}`;
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(messageText);
-      toast({ title: "Mensagem copiada!" });
-    } catch {
-      toast({ title: "Erro ao copiar", variant: "destructive" });
-    }
+  const handleWhatsapp = () => {
+    window.open(whatsappUrl, "_blank");
+    setWhatsappEnviado(true);
   };
-
-  const pixOk = cfg?.pix_chave && cfg?.pix_nome_titular && cfg?.pix_cidade && totalPrice > 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container flex items-center gap-2 py-4">
           <Scissors className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl tracking-wider">BARBEARIA CARDOSO</h1>
+          <h1 className="text-2xl tracking-wider">BARBEARIA</h1>
         </div>
       </header>
 
       <main className="container max-w-lg flex-1 py-12 space-y-6 animate-fade-in">
         <div className="text-center space-y-3">
           <CheckCircle className="h-16 w-16 text-primary mx-auto" />
-          <h2 className="text-4xl">CONFIRMADO!</h2>
+          <h2 className="text-4xl">AGENDADO!</h2>
+          <p className="text-muted-foreground font-body text-sm">
+            Confirme pelo WhatsApp para garantir seu horário
+          </p>
         </div>
 
+        {/* Resumo */}
         <div className="bg-card rounded-xl p-5 border border-border w-full space-y-3">
           <div className="flex items-center gap-3">
             <span className="text-primary font-semibold text-sm font-body">Nome:</span>
@@ -108,43 +104,43 @@ export default function AgendamentoSucesso() {
           </div>
         </div>
 
-        {pixOk && (
-          <div className="bg-card rounded-xl p-5 border border-primary/40 space-y-3">
-            <p className="font-heading text-lg text-center tracking-wider">PAGAR COM PIX</p>
-            <PixQR
-              chave={cfg.pix_chave}
-              nome={cfg.pix_nome_titular}
-              cidade={cfg.pix_cidade}
-              valor={totalPrice}
-              descricao="Barbearia Cardoso"
-            />
+        {/* Aviso obrigatório */}
+        {!whatsappEnviado && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
+            <p className="font-body text-sm text-yellow-800">
+              <strong>Atenção:</strong> Você precisa enviar a mensagem no WhatsApp para confirmar seu agendamento. Sem a confirmação o horário não será garantido.
+            </p>
           </div>
         )}
 
-        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="block w-full">
-          <Button className="w-full py-6 text-lg font-heading tracking-widest bg-[#25D366] hover:bg-[#1da851] text-white" size="lg">
-            <MessageCircle className="mr-2 h-5 w-5" />
-            ENVIAR WHATSAPP
-          </Button>
-        </a>
-
-        <Button onClick={handleCopy} variant="outline" className="w-full py-5 font-heading tracking-widest" size="lg">
-          <Copy className="mr-2 h-5 w-5" />
-          COPIAR MENSAGEM
-        </Button>
-
+        {/* Botão WhatsApp — obrigatório */}
         <Button
-          onClick={() => navigate("/cancelar")}
-          variant="ghost"
-          className="w-full py-4 font-heading tracking-widest text-destructive hover:text-destructive"
+          onClick={handleWhatsapp}
+          className="w-full py-6 text-lg font-heading tracking-widest bg-[#25D366] hover:bg-[#1da851] text-white"
+          size="lg"
         >
-          <X className="mr-2 h-4 w-4" />
-          PRECISO CANCELAR
+          <MessageCircle className="mr-2 h-5 w-5" />
+          {whatsappEnviado ? "ENVIAR NOVAMENTE" : "CONFIRMAR PELO WHATSAPP"}
         </Button>
 
-        <Button onClick={() => navigate("/agendamento")} variant="ghost" className="w-full py-4 font-heading tracking-widest">
-          NOVO AGENDAMENTO
-        </Button>
+        {/* Só aparece após enviar */}
+        {whatsappEnviado && (
+          <div className="space-y-3 animate-fade-in">
+            <div className="bg-green-50 border border-green-300 rounded-xl p-4 text-center">
+              <p className="font-body text-sm text-green-800 font-semibold">
+                ✅ Mensagem enviada! Aguarde a confirmação do administrador.
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/")}
+              variant="ghost"
+              className="w-full py-4 font-heading tracking-widest"
+            >
+              VOLTAR AO INÍCIO
+            </Button>
+          </div>
+        )}
       </main>
     </div>
   );

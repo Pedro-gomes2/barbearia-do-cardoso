@@ -23,6 +23,7 @@ export default function AgendamentoDados() {
   const { date, time, servicos } = (location.state as LocationState) || {};
 
   const [nome, setNome] = useState("");
+  const [sobrenome, setSobrenome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,8 +38,12 @@ export default function AgendamentoDados() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (nome.length < 2) {
+    if (nome.trim().length < 2) {
       toast({ title: "Nome inválido", description: "Informe pelo menos 2 caracteres.", variant: "destructive" });
+      return;
+    }
+    if (sobrenome.trim().length < 2) {
+      toast({ title: "Sobrenome inválido", description: "Informe pelo menos 2 caracteres.", variant: "destructive" });
       return;
     }
     if (!/^\d{10,11}$/.test(telefone.replace(/\D/g, ""))) {
@@ -46,10 +51,11 @@ export default function AgendamentoDados() {
       return;
     }
 
+    const nomeCompleto = `${nome.trim()} ${sobrenome.trim()}`;
     setLoading(true);
     try {
-      await createAppointment(nome, telefone, date, time, servicos.map((s) => s.id));
-      navigate("/agendamento/sucesso", { state: { nome, date, time, servicos } });
+      await createAppointment(nomeCompleto, telefone, date, time, servicos.map((s) => s.id));
+      navigate("/agendamento/sucesso", { state: { nome: nomeCompleto, date, time, servicos } });
     } catch (err: any) {
       toast({ title: "Erro ao agendar", description: err.message || "Tente novamente.", variant: "destructive" });
     } finally {
@@ -62,7 +68,7 @@ export default function AgendamentoDados() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container flex items-center gap-2 py-4">
           <Scissors className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl tracking-wider">BARBEARIA CARDOSO</h1>
+          <h1 className="text-2xl tracking-wider">BARBEARIA</h1>
         </div>
       </header>
 
@@ -106,7 +112,13 @@ export default function AgendamentoDados() {
             <Label htmlFor="nome" className="flex items-center gap-2">
               <User className="h-4 w-4 text-primary" /> Nome
             </Label>
-            <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required minLength={2} maxLength={100} />
+            <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome" required minLength={2} maxLength={60} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sobrenome" className="flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" /> Sobrenome
+            </Label>
+            <Input id="sobrenome" value={sobrenome} onChange={(e) => setSobrenome(e.target.value)} placeholder="Seu sobrenome" required minLength={2} maxLength={60} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="telefone" className="flex items-center gap-2">

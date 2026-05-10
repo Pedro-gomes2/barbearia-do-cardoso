@@ -154,7 +154,10 @@ export type Database = {
       }
       configuracoes_app: {
         Row: {
+          agenda_abertura_fim: string | null
+          agenda_abertura_inicio: string | null
           atualizado_em: string
+          data_agenda_aberta: string | null
           id: string
           pix_chave: string | null
           pix_cidade: string | null
@@ -162,7 +165,10 @@ export type Database = {
           whatsapp_admin: string | null
         }
         Insert: {
+          agenda_abertura_fim?: string | null
+          agenda_abertura_inicio?: string | null
           atualizado_em?: string
+          data_agenda_aberta?: string | null
           id?: string
           pix_chave?: string | null
           pix_cidade?: string | null
@@ -170,7 +176,10 @@ export type Database = {
           whatsapp_admin?: string | null
         }
         Update: {
+          agenda_abertura_fim?: string | null
+          agenda_abertura_inicio?: string | null
           atualizado_em?: string
+          data_agenda_aberta?: string | null
           id?: string
           pix_chave?: string | null
           pix_cidade?: string | null

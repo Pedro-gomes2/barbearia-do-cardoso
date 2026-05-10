@@ -128,7 +128,7 @@ export default function AdminDashboard() {
       if (tel) {
         const dataDisp = format(parse(apt.data, "yyyy-MM-dd", new Date()), "dd/MM/yyyy", { locale: ptBR });
         const msg = encodeURIComponent(
-          `Olá ${apt.usuarios?.nome || ""}, seu horário na Barbearia Cardoso em ${dataDisp} às ${apt.horario.slice(
+          `Olá ${apt.usuarios?.nome || ""}, seu horário na Barbearia em ${dataDisp} às ${apt.horario.slice(
             0,
             5
           )} foi cancelado. Entre em contato para reagendar.`

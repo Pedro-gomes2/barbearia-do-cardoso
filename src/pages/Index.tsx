@@ -26,14 +26,13 @@ export default function Index() {
       <div className="relative h-[60vh] min-h-[400px] overflow-hidden">
         <img
           src={heroImage}
-          alt="Interior da Barbearia Cardoso"
+          alt="Interior da Barbearia"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/40 to-background" />
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4 animate-fade-in">
           <Scissors className="h-12 w-12 text-primary mb-4" />
           <h1 className="text-6xl md:text-8xl tracking-wider mb-2">BARBEARIA</h1>
-          <h1 className="text-6xl md:text-8xl tracking-wider text-primary">CARDOSO</h1>
           <p className="mt-4 text-muted-foreground font-body text-lg max-w-md">
             Estilo e tradição em cada corte. Agende seu horário online.
           </p>
@@ -87,14 +86,9 @@ export default function Index() {
           AGENDAR AGORA
         </Button>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Button onClick={() => navigate("/fila")} variant="outline" className="py-5 font-heading tracking-widest" size="lg">
-            ENTRAR NA FILA
-          </Button>
-          <Button onClick={() => navigate("/cancelar")} variant="outline" className="py-5 font-heading tracking-widest" size="lg">
-            CANCELAR
-          </Button>
-        </div>
+        <Button onClick={() => navigate("/fila")} variant="outline" className="w-full py-5 font-heading tracking-widest" size="lg">
+          ENTRAR NA FILA
+        </Button>
 
         {/* Contact */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">

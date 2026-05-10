@@ -23,7 +23,7 @@ export function TimeSlotGrid({ slots, selectedTime, onSelect }: TimeSlotGridProp
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="flex flex-col gap-2">
       {slots.map((slot) => {
         const display = slot.time.slice(0, 5);
         const isSelected = selectedTime === slot.time;
@@ -33,7 +33,7 @@ export function TimeSlotGrid({ slots, selectedTime, onSelect }: TimeSlotGridProp
             disabled={!slot.available}
             onClick={() => onSelect(slot.time)}
             className={cn(
-              "py-3 px-4 rounded-lg text-center font-medium transition-all duration-200 border",
+              "w-full py-3 px-4 rounded-lg text-left font-medium transition-all duration-200 border",
               slot.available && !isSelected &&
                 "border-border bg-surface text-foreground hover:border-primary hover:bg-primary/10",
               isSelected &&

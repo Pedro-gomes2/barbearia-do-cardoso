@@ -33,7 +33,7 @@ const App = () => (
           <Route path="/agendamento" element={<Agendamento />} />
           <Route path="/agendamento/dados" element={<AgendamentoDados />} />
           <Route path="/agendamento/sucesso" element={<AgendamentoSucesso />} />
-          <Route path="/cancelar" element={<Cancelar />} />
+          <Route path="/cancelar" element={<RequireAuth><Cancelar /></RequireAuth>} />
           <Route path="/fila" element={<Fila />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route element={<RequireAuth><AdminLayout /></RequireAuth>}>
