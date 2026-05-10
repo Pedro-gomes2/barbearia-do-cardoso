@@ -91,13 +91,12 @@ export default function AgendamentoDados() {
             </div>
           ))}
           <div className="flex items-center justify-between border-t border-border pt-2">
-            <div className="flex items-center gap-3">
-              <span className="font-body text-sm font-semibold">Total</span>
-              <span className="font-body text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" /> {totalMinutos} min
-              </span>
-            </div>
-            <span className="font-heading text-lg text-primary">R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+            <span className="font-body text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" /> {totalMinutos} min
+            </span>
+            {servicos.length > 1 && (
+              <span className="font-heading text-lg text-primary">Total: R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-primary">
