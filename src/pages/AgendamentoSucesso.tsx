@@ -35,6 +35,7 @@ export default function AgendamentoSucesso() {
   const dateDisplay = format(parse(date, "yyyy-MM-dd", new Date()), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const timeDisplay = time.slice(0, 5);
   const totalPrice = (servicos || []).reduce((sum, s) => sum + s.preco, 0);
+  const totalMinutos = (servicos || []).reduce((sum, s) => sum + s.duracao_minutos, 0);
   const whatsappNumber = cfg?.whatsapp_admin || FALLBACK_WHATSAPP;
 
   const servicosText = (servicos || []).map((s) => s.nome).join(", ");
@@ -89,7 +90,12 @@ export default function AgendamentoSucesso() {
                 </div>
               ))}
               <div className="flex items-center justify-between border-t border-border pt-2 mt-2">
-                <span className="font-body text-sm font-semibold">Total</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-body text-sm font-semibold">Total</span>
+                  <span className="font-body text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {totalMinutos} min
+                  </span>
+                </div>
                 <span className="text-primary font-heading text-lg">R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
               </div>
             </div>

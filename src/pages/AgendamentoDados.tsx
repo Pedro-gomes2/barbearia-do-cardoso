@@ -35,6 +35,7 @@ export default function AgendamentoDados() {
   const dateDisplay = format(parse(date, "yyyy-MM-dd", new Date()), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const timeDisplay = time.slice(0, 5);
   const totalPrice = servicos.reduce((sum, s) => sum + s.preco, 0);
+  const totalMinutos = servicos.reduce((sum, s) => sum + s.duracao_minutos, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,12 +90,15 @@ export default function AgendamentoDados() {
               <span className="font-heading text-lg text-primary">R$ {s.preco.toFixed(2).replace(".", ",")}</span>
             </div>
           ))}
-          {servicos.length > 1 && (
-            <div className="flex items-center justify-between border-t border-border pt-2">
+          <div className="flex items-center justify-between border-t border-border pt-2">
+            <div className="flex items-center gap-3">
               <span className="font-body text-sm font-semibold">Total</span>
-              <span className="font-heading text-lg text-primary">R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+              <span className="font-body text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> {totalMinutos} min
+              </span>
             </div>
-          )}
+            <span className="font-heading text-lg text-primary">R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+          </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-primary">
               <Calendar className="h-5 w-5" />
