@@ -53,7 +53,7 @@ export default function Index() {
             <Clock className="h-8 w-8 text-primary" />
             <h3 className="text-2xl">HORÁRIOS FLEXÍVEIS</h3>
             <p className="text-muted-foreground font-body text-sm">
-              Segunda a sábado, com horários atualizados em tempo real.
+              Terça a sábado, com horários atualizados em tempo real.
             </p>
           </div>
         </div>
@@ -86,9 +86,14 @@ export default function Index() {
           AGENDAR AGORA
         </Button>
 
-        <Button onClick={() => navigate("/fila")} variant="outline" className="w-full py-5 font-heading tracking-widest" size="lg">
-          ENTRAR NA FILA
-        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button onClick={() => navigate("/produtos")} variant="outline" className="py-5 font-heading tracking-widest" size="lg">
+            PRODUTOS
+          </Button>
+          <Button onClick={() => navigate("/cancelar")} variant="outline" className="py-5 font-heading tracking-widest" size="lg">
+            CANCELAR
+          </Button>
+        </div>
 
         {/* Contact */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">

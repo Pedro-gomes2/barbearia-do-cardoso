@@ -17,40 +17,33 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import type { Produto } from "@/lib/produto-types";
 
-interface Servico {
-  id: string;
-  nome: string;
-  preco: number;
-  duracao_minutos: number;
-  ativo: boolean;
-}
-
-export default function AdminServicos() {
+export default function AdminProdutos() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Partial<Servico>>({});
+  const [editValues, setEditValues] = useState<Partial<Produto>>({});
   const [showNew, setShowNew] = useState(false);
-  const [newValues, setNewValues] = useState({ nome: "", preco: 0, duracao_minutos: 60 });
+  const [newValues, setNewValues] = useState({ nome: "", descricao: "", preco: 0, imagem_url: "" });
 
-  const { data: servicos = [] } = useQuery({
-    queryKey: ["admin-servicos"],
+  const { data: produtos = [] } = useQuery({
+    queryKey: ["admin-produtos"],
     queryFn: async () => {
-      const { data } = await supabase.from("servicos").select("*").order("nome");
-      return (data || []) as Servico[];
+      const { data } = await supabase.from("produtos").select("*").order("nome");
+      return (data || []) as Produto[];
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...values }: { id: string; nome?: string; preco?: number; duracao_minutos?: number; ativo?: boolean }) => {
-      const { error } = await supabase.from("servicos").update(values).eq("id", id);
+    mutationFn: async ({ id, ...values }: Partial<Produto> & { id: string }) => {
+      const { error } = await supabase.from("produtos").update(values).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
-      queryClient.invalidateQueries({ queryKey: ["servicos"] });
-      toast({ title: "Serviço atualizado!" });
+      queryClient.invalidateQueries({ queryKey: ["admin-produtos"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos-publico"] });
+      toast({ title: "Produto atualizado!" });
       setEditingId(null);
       setEditValues({});
     },
@@ -62,19 +55,20 @@ export default function AdminServicos() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!newValues.nome.trim()) throw new Error("Nome é obrigatório");
-      const { error } = await supabase.from("servicos").insert({
+      const { error } = await supabase.from("produtos").insert({
         nome: newValues.nome.trim(),
+        descricao: newValues.descricao.trim() || null,
         preco: newValues.preco,
-        duracao_minutos: newValues.duracao_minutos,
+        imagem_url: newValues.imagem_url.trim() || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
-      queryClient.invalidateQueries({ queryKey: ["servicos"] });
-      toast({ title: "Serviço criado!" });
+      queryClient.invalidateQueries({ queryKey: ["admin-produtos"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos-publico"] });
+      toast({ title: "Produto criado!" });
       setShowNew(false);
-      setNewValues({ nome: "", preco: 0, duracao_minutos: 60 });
+      setNewValues({ nome: "", descricao: "", preco: 0, imagem_url: "" });
     },
     onError: (err: any) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -83,78 +77,82 @@ export default function AdminServicos() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("servicos").delete().eq("id", id);
+      const { error } = await supabase.from("produtos").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
-      queryClient.invalidateQueries({ queryKey: ["servicos"] });
-      toast({ title: "Serviço excluído!" });
+      queryClient.invalidateQueries({ queryKey: ["admin-produtos"] });
+      queryClient.invalidateQueries({ queryKey: ["produtos-publico"] });
+      toast({ title: "Produto excluído!" });
     },
     onError: (err: any) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     },
   });
 
-  const startEdit = (s: Servico) => {
-    setEditingId(s.id);
-    setEditValues({ nome: s.nome, preco: s.preco, duracao_minutos: s.duracao_minutos });
+  const startEdit = (p: Produto) => {
+    setEditingId(p.id);
+    setEditValues({ nome: p.nome, descricao: p.descricao, preco: p.preco, imagem_url: p.imagem_url });
   };
 
   const saveEdit = (id: string) => {
     updateMutation.mutate({ id, ...editValues });
   };
 
-  const toggleAtivo = (s: Servico) => {
-    updateMutation.mutate({ id: s.id, ativo: !s.ativo });
+  const toggleAtivo = (p: Produto) => {
+    updateMutation.mutate({ id: p.id, ativo: !p.ativo });
   };
 
   return (
     <div className="container max-w-lg py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-heading tracking-wider">SERVIÇOS</h2>
-        <p className="text-muted-foreground font-body text-sm">Gerencie preços e duração dos serviços</p>
+        <h2 className="text-3xl font-heading tracking-wider">PRODUTOS</h2>
+        <p className="text-muted-foreground font-body text-sm">Gerencie os produtos da barbearia</p>
       </div>
 
       <Button onClick={() => setShowNew(!showNew)} variant={showNew ? "secondary" : "default"} className="w-full font-heading tracking-widest">
         <Plus className="h-4 w-4 mr-2" />
-        {showNew ? "CANCELAR" : "NOVO SERVIÇO"}
+        {showNew ? "CANCELAR" : "NOVO PRODUTO"}
       </Button>
 
       {showNew && (
         <div className="bg-card rounded-xl p-4 border border-primary/50 space-y-3 animate-fade-in">
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground font-body">Nome do serviço</label>
-            <Input value={newValues.nome} onChange={(e) => setNewValues({ ...newValues, nome: e.target.value })} placeholder="Ex: Barba" />
+            <label className="text-xs text-muted-foreground font-body">Nome do produto *</label>
+            <Input value={newValues.nome} onChange={(e) => setNewValues({ ...newValues, nome: e.target.value })} placeholder="Ex: Pomada Modeladora" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground font-body">Descrição</label>
+            <Input value={newValues.descricao} onChange={(e) => setNewValues({ ...newValues, descricao: e.target.value })} placeholder="Breve descrição do produto" />
           </div>
           <div className="flex gap-3">
             <div className="flex-1 space-y-1">
               <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
               <Input type="number" step="0.01" value={newValues.preco || ""} onChange={(e) => setNewValues({ ...newValues, preco: Number(e.target.value) })} />
             </div>
-            <div className="flex-1 space-y-1">
-              <label className="text-xs text-muted-foreground font-body">Duração (min)</label>
-              <Input type="number" value={newValues.duracao_minutos || ""} onChange={(e) => setNewValues({ ...newValues, duracao_minutos: Number(e.target.value) })} />
-            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground font-body">URL da imagem</label>
+            <Input value={newValues.imagem_url} onChange={(e) => setNewValues({ ...newValues, imagem_url: e.target.value })} placeholder="https://..." />
           </div>
           <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="w-full font-heading tracking-widest">
             <Save className="h-4 w-4 mr-2" />
-            {createMutation.isPending ? "SALVANDO..." : "SALVAR SERVIÇO"}
+            {createMutation.isPending ? "SALVANDO..." : "SALVAR PRODUTO"}
           </Button>
         </div>
       )}
 
       <div className="space-y-3">
-        {servicos.map((s) => {
-          const isEditing = editingId === s.id;
+        {produtos.map((p) => {
+          const isEditing = editingId === p.id;
           return (
             <div
-              key={s.id}
-              className={`bg-card rounded-xl p-4 border border-border space-y-3 ${!s.ativo ? "opacity-50" : ""}`}
+              key={p.id}
+              className={`bg-card rounded-xl p-4 border border-border space-y-3 ${!p.ativo ? "opacity-50" : ""}`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-heading text-xl tracking-wide">{s.nome.toUpperCase()}</span>
-                <Switch checked={s.ativo} onCheckedChange={() => toggleAtivo(s)} />
+                <span className="font-heading text-xl tracking-wide">{p.nome.toUpperCase()}</span>
+                <Switch checked={p.ativo} onCheckedChange={() => toggleAtivo(p)} />
               </div>
 
               {isEditing ? (
@@ -164,30 +162,36 @@ export default function AdminServicos() {
                     <Input
                       value={editValues.nome ?? ""}
                       onChange={(e) => setEditValues({ ...editValues, nome: e.target.value })}
-                      placeholder="Nome do serviço"
+                      placeholder="Nome do produto"
                     />
                   </div>
-                  <div className="flex gap-3">
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={editValues.preco ?? ""}
-                        onChange={(e) => setEditValues({ ...editValues, preco: Number(e.target.value) })}
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs text-muted-foreground font-body">Duração (min)</label>
-                      <Input
-                        type="number"
-                        value={editValues.duracao_minutos ?? ""}
-                        onChange={(e) => setEditValues({ ...editValues, duracao_minutos: Number(e.target.value) })}
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-body">Descrição</label>
+                    <Input
+                      value={editValues.descricao ?? ""}
+                      onChange={(e) => setEditValues({ ...editValues, descricao: e.target.value })}
+                      placeholder="Descrição"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={editValues.preco ?? ""}
+                      onChange={(e) => setEditValues({ ...editValues, preco: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-body">URL da imagem</label>
+                    <Input
+                      value={editValues.imagem_url ?? ""}
+                      onChange={(e) => setEditValues({ ...editValues, imagem_url: e.target.value })}
+                      placeholder="https://..."
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => saveEdit(s.id)} disabled={updateMutation.isPending} className="flex-1">
+                    <Button size="sm" onClick={() => saveEdit(p.id)} disabled={updateMutation.isPending} className="flex-1">
                       <Save className="h-4 w-4 mr-1" /> Salvar
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
@@ -197,13 +201,16 @@ export default function AdminServicos() {
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div className="font-body text-sm text-muted-foreground">
-                    <span className="text-primary font-semibold">R$ {s.preco.toFixed(2).replace(".", ",")}</span>
-                    {" · "}
-                    {s.duracao_minutos} min
+                  <div className="font-body text-sm text-muted-foreground space-y-0.5">
+                    {p.descricao && <p>{p.descricao}</p>}
+                    {p.preco > 0 && (
+                      <span className="text-primary font-semibold">
+                        R$ {Number(p.preco).toFixed(2).replace(".", ",")}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(p)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
@@ -214,15 +221,15 @@ export default function AdminServicos() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir serviço</AlertDialogTitle>
+                          <AlertDialogTitle>Excluir produto</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tem certeza que deseja excluir o serviço <strong>{s.nome}</strong>? Esta ação não pode ser desfeita.
+                            Tem certeza que deseja excluir o produto <strong>{p.nome}</strong>? Esta ação não pode ser desfeita.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => deleteMutation.mutate(s.id)}
+                            onClick={() => deleteMutation.mutate(p.id)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             Excluir

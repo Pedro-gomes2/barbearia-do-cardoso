@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Users, Wrench, Clock } from "lucide-react";
+import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Wrench, Clock, ShoppingBag } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -19,10 +19,10 @@ import { supabase } from "@/integrations/supabase/client";
 const items = [
   { title: "Dashboard", url: "/admin/dashboard", icon: BarChart3 },
   { title: "Agenda", url: "/admin/agenda", icon: CalendarDays },
-  { title: "Fila", url: "/admin/fila", icon: Users },
   { title: "Bloqueios", url: "/admin/bloqueios", icon: Ban },
   { title: "Serviços", url: "/admin/servicos", icon: Wrench },
   { title: "Horários", url: "/admin/horarios", icon: Clock },
+  { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
   { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
 ];
 
@@ -33,7 +33,7 @@ export function AdminSidebar() {
   const navigate = useNavigate();
 
   const isActive = (path: string) => pathname === path;
-  
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

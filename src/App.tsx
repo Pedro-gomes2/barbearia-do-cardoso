@@ -10,15 +10,15 @@ import Agendamento from "./pages/Agendamento";
 import AgendamentoDados from "./pages/AgendamentoDados";
 import AgendamentoSucesso from "./pages/AgendamentoSucesso";
 import Cancelar from "./pages/Cancelar";
-import Fila from "./pages/Fila";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminAgenda from "./pages/AdminAgenda";
 import AdminBloqueios from "./pages/AdminBloqueios";
 import AdminServicos from "./pages/AdminServicos";
-import AdminFila from "./pages/AdminFila";
 import AdminConfiguracoes from "./pages/AdminConfiguracoes";
 import AdminHorarios from "./pages/AdminHorarios";
+import Produtos from "./pages/Produtos";
+import AdminProdutos from "./pages/AdminProdutos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,15 +34,15 @@ const App = () => (
           <Route path="/agendamento" element={<Agendamento />} />
           <Route path="/agendamento/dados" element={<AgendamentoDados />} />
           <Route path="/agendamento/sucesso" element={<AgendamentoSucesso />} />
-          <Route path="/cancelar" element={<RequireAuth><Cancelar /></RequireAuth>} />
-          <Route path="/fila" element={<Fila />} />
+          <Route path="/cancelar" element={<Cancelar />} />
+          <Route path="/produtos" element={<Produtos />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route element={<RequireAuth><AdminLayout /></RequireAuth>}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/agenda" element={<AdminAgenda />} />
-            <Route path="/admin/fila" element={<AdminFila />} />
             <Route path="/admin/bloqueios" element={<AdminBloqueios />} />
             <Route path="/admin/servicos" element={<AdminServicos />} />
+            <Route path="/admin/produtos" element={<AdminProdutos />} />
             <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
             <Route path="/admin/horarios" element={<AdminHorarios />} />
           </Route>
