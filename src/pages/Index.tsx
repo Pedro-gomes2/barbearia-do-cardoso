@@ -15,7 +15,7 @@ export default function Index() {
         .from("servicos")
         .select("id, nome, preco")
         .eq("ativo", true)
-        .order("nome");
+        .order("ordem", { ascending: true });
       return data || [];
     },
   });

@@ -15,7 +15,7 @@ import {
   parse,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, X, ChevronLeft, ChevronRight, Search, MessageCircle, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarDays, X, ChevronLeft, ChevronRight, Search, MessageCircle, Plus, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -147,6 +147,21 @@ export default function AdminDashboard() {
     },
   });
 
+  const finalizeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("agendamentos").update({ status: "finalizado" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      toast({ title: "Agendamento finalizado!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
+
   const encaixeMutation = useMutation({
     mutationFn: async () => {
       if (!encaixeNome.trim()) throw new Error("Informe o nome do cliente");
@@ -213,7 +228,7 @@ export default function AdminDashboard() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(refDate, { weekStartsOn: 0 }), i));
 
   return (
-    <div className="container max-w-6xl py-8 space-y-6 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
@@ -322,7 +337,11 @@ export default function AdminDashboard() {
         </div>
 
         <TabsContent value="dia" className="mt-4">
-          <AppointmentsList appointments={filtered} onCancel={(a) => cancelMutation.mutate(a)} />
+          <AppointmentsList 
+            appointments={filtered} 
+            onCancel={(a) => cancelMutation.mutate(a)} 
+            onFinalize={(a) => finalizeMutation.mutate(a.id)}
+          />
         </TabsContent>
 
         <TabsContent value="semana" className="mt-4">
@@ -352,7 +371,11 @@ export default function AdminDashboard() {
           </div>
           <div className="mt-6">
             <p className="font-heading text-sm tracking-wider text-muted-foreground mb-2">DETALHES</p>
-            <AppointmentsList appointments={filtered} onCancel={(a) => cancelMutation.mutate(a)} />
+            <AppointmentsList 
+              appointments={filtered} 
+              onCancel={(a) => cancelMutation.mutate(a)} 
+              onFinalize={(a) => finalizeMutation.mutate(a.id)}
+            />
           </div>
         </TabsContent>
 
@@ -360,7 +383,11 @@ export default function AdminDashboard() {
           <MonthGrid refDate={refDate} appointments={filtered} onSelectDay={(d) => { setRefDate(d); setTab("dia"); }} />
           <div className="mt-6">
             <p className="font-heading text-sm tracking-wider text-muted-foreground mb-2">DETALHES DO MÊS</p>
-            <AppointmentsList appointments={filtered} onCancel={(a) => cancelMutation.mutate(a)} />
+            <AppointmentsList 
+              appointments={filtered} 
+              onCancel={(a) => cancelMutation.mutate(a)} 
+              onFinalize={(a) => finalizeMutation.mutate(a.id)}
+            />
           </div>
         </TabsContent>
       </Tabs>
@@ -368,7 +395,7 @@ export default function AdminDashboard() {
   );
 }
 
-function AppointmentsList({ appointments, onCancel }: { appointments: any[]; onCancel: (a: any) => void }) {
+function AppointmentsList({ appointments, onCancel, onFinalize }: { appointments: any[]; onCancel: (a: any) => void; onFinalize: (a: any) => void }) {
   if (appointments.length === 0) {
     return <p className="text-muted-foreground text-center py-8 font-body">Nenhum agendamento.</p>;
   }
@@ -396,15 +423,25 @@ function AppointmentsList({ appointments, onCancel }: { appointments: any[]; onC
             )}
           </div>
           {apt.status === "ativo" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onCancel(apt)}
-              className="text-destructive hover:text-destructive font-heading"
-            >
-              <MessageCircle className="h-4 w-4 mr-1" />
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onFinalize(apt)}
+                className="text-primary hover:text-primary font-heading"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Finalizar</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onCancel(apt)}
+                className="text-destructive hover:text-destructive font-heading"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
       ))}

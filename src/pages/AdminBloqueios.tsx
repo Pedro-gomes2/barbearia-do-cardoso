@@ -62,7 +62,7 @@ export default function AdminBloqueios() {
   });
 
   return (
-    <div className="container max-w-lg py-8 space-y-8 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-8 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-heading tracking-wider">BLOQUEIOS</h2>
         <p className="text-muted-foreground font-body text-sm">Bloqueie horários indisponíveis</p>

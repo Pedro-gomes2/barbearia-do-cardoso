@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Scissors, Phone, Calendar, Clock, X, ArrowLeft } from "lucide-react";
+import { Scissors, Phone, Calendar, Clock, X, ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,9 +89,12 @@ export default function Cancelar() {
       </header>
 
       <main className="container max-w-lg py-8 space-y-6 animate-fade-in">
-        <Button variant="ghost" onClick={() => navigate("/")} className="font-heading">
-          <ArrowLeft className="mr-2 h-4 w-4" /> VOLTAR
-        </Button>
+        <div className="flex items-center justify-between mb-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="font-heading tracking-widest text-xs">
+            <ArrowLeft className="h-4 w-4 mr-2" /> VOLTAR
+          </Button>
+          <Home className="h-5 w-5 text-muted-foreground cursor-pointer" onClick={() => navigate("/")} />
+        </div>
 
         <div className="text-center space-y-2">
           <h2 className="text-4xl">CANCELAR AGENDAMENTO</h2>

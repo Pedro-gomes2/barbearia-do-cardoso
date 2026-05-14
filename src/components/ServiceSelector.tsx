@@ -23,7 +23,7 @@ export function ServiceSelector({ selectedIds, onToggle }: ServiceSelectorProps)
         .from("servicos")
         .select("*")
         .eq("ativo", true)
-        .order("nome");
+        .order("ordem", { ascending: true });
       return (data || []) as Servico[];
     },
   });

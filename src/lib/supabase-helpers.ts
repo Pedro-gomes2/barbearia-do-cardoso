@@ -3,7 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 export async function getAvailableSlots(date: string) {
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
-  // Check for custom slots first
+  // Check if day is active in general config
+  const { data: config } = await supabase
+    .from("configuracoes_agenda")
+    .select("ativo")
+    .eq("dia_semana", dayOfWeek)
+    .single();
+
+  if (config && !config.ativo) {
+    return [];
+  }
+
+  // Check for custom slots
   const { data: customSlots } = await supabase
     .from("horarios_customizados")
     .select("horario")

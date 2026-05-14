@@ -279,6 +279,7 @@ export type Database = {
           duracao_minutos: number
           id: string
           nome: string
+          ordem: number
           preco: number
         }
         Insert: {
@@ -287,6 +288,7 @@ export type Database = {
           duracao_minutos?: number
           id?: string
           nome: string
+          ordem?: number
           preco?: number
         }
         Update: {
@@ -295,6 +297,7 @@ export type Database = {
           duracao_minutos?: number
           id?: string
           nome?: string
+          ordem?: number
           preco?: number
         }
         Relationships: []
@@ -334,7 +337,7 @@ export type Database = {
       }
     }
     Enums: {
-      agendamento_status: "ativo" | "cancelado"
+      agendamento_status: "ativo" | "cancelado" | "finalizado"
       fila_status: "aguardando" | "atendendo" | "finalizado" | "cancelado"
       user_tipo: "cliente" | "admin"
     }
@@ -464,7 +467,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      agendamento_status: ["ativo", "cancelado"],
+      agendamento_status: ["ativo", "cancelado", "finalizado"],
       fila_status: ["aguardando", "atendendo", "finalizado", "cancelado"],
       user_tipo: ["cliente", "admin"],
     },

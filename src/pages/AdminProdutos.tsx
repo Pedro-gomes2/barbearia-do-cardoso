@@ -25,7 +25,7 @@ export default function AdminProdutos() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Produto>>({});
   const [showNew, setShowNew] = useState(false);
-  const [newValues, setNewValues] = useState({ nome: "", descricao: "", preco: 0, imagem_url: "" });
+  const [newValues, setNewValues] = useState({ nome: "", descricao: "", preco: 0 });
 
   const { data: produtos = [] } = useQuery({
     queryKey: ["admin-produtos"],
@@ -59,7 +59,6 @@ export default function AdminProdutos() {
         nome: newValues.nome.trim(),
         descricao: newValues.descricao.trim() || null,
         preco: newValues.preco,
-        imagem_url: newValues.imagem_url.trim() || null,
       });
       if (error) throw error;
     },
@@ -68,7 +67,7 @@ export default function AdminProdutos() {
       queryClient.invalidateQueries({ queryKey: ["produtos-publico"] });
       toast({ title: "Produto criado!" });
       setShowNew(false);
-      setNewValues({ nome: "", descricao: "", preco: 0, imagem_url: "" });
+      setNewValues({ nome: "", descricao: "", preco: 0 });
     },
     onError: (err: any) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -92,7 +91,7 @@ export default function AdminProdutos() {
 
   const startEdit = (p: Produto) => {
     setEditingId(p.id);
-    setEditValues({ nome: p.nome, descricao: p.descricao, preco: p.preco, imagem_url: p.imagem_url });
+    setEditValues({ nome: p.nome, descricao: p.descricao, preco: p.preco });
   };
 
   const saveEdit = (id: string) => {
@@ -104,7 +103,7 @@ export default function AdminProdutos() {
   };
 
   return (
-    <div className="container max-w-lg py-8 space-y-6 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-heading tracking-wider">PRODUTOS</h2>
         <p className="text-muted-foreground font-body text-sm">Gerencie os produtos da barbearia</p>
@@ -130,10 +129,6 @@ export default function AdminProdutos() {
               <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
               <Input type="number" step="0.01" value={newValues.preco || ""} onChange={(e) => setNewValues({ ...newValues, preco: Number(e.target.value) })} />
             </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground font-body">URL da imagem</label>
-            <Input value={newValues.imagem_url} onChange={(e) => setNewValues({ ...newValues, imagem_url: e.target.value })} placeholder="https://..." />
           </div>
           <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="w-full font-heading tracking-widest">
             <Save className="h-4 w-4 mr-2" />
@@ -180,14 +175,6 @@ export default function AdminProdutos() {
                       step="0.01"
                       value={editValues.preco ?? ""}
                       onChange={(e) => setEditValues({ ...editValues, preco: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground font-body">URL da imagem</label>
-                    <Input
-                      value={editValues.imagem_url ?? ""}
-                      onChange={(e) => setEditValues({ ...editValues, imagem_url: e.target.value })}
-                      placeholder="https://..."
                     />
                   </div>
                   <div className="flex gap-2">

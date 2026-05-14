@@ -56,7 +56,7 @@ export default function AdminHorarios() {
   const dataDisplay = format(parse(data, "yyyy-MM-dd", new Date()), "EEEE, dd 'de' MMMM", { locale: ptBR });
 
   return (
-    <div className="container max-w-lg py-8 space-y-6 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-1">
         <Clock className="h-8 w-8 text-primary mx-auto" />
         <h2 className="text-3xl font-heading tracking-wider">HORÁRIOS</h2>

@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Wrench, Clock, ShoppingBag } from "lucide-react";
+import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Wrench, Clock, ShoppingBag, Wallet } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -23,7 +23,9 @@ const items = [
   { title: "Serviços", url: "/admin/servicos", icon: Wrench },
   { title: "Horários", url: "/admin/horarios", icon: Clock },
   { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
+  { title: "Financeiro", url: "/admin/financeiro", icon: Wallet },
   { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
+  { title: "Ver Site", url: "/", icon: Scissors },
 ];
 
 export function AdminSidebar() {

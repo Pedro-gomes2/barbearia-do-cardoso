@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Save, X, Plus, Trash2 } from "lucide-react";
+import { Pencil, Save, X, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +24,7 @@ interface Servico {
   preco: number;
   duracao_minutos: number;
   ativo: boolean;
+  ordem: number;
 }
 
 export default function AdminServicos() {
@@ -37,7 +38,7 @@ export default function AdminServicos() {
   const { data: servicos = [] } = useQuery({
     queryKey: ["admin-servicos"],
     queryFn: async () => {
-      const { data } = await supabase.from("servicos").select("*").order("nome");
+      const { data } = await supabase.from("servicos").select("*").order("ordem", { ascending: true });
       return (data || []) as Servico[];
     },
   });
@@ -96,6 +97,34 @@ export default function AdminServicos() {
     },
   });
 
+
+  const reorderMutation = useMutation({
+    mutationFn: async ({ id1, ordem1, id2, ordem2 }: { id1: string; ordem1: number; id2: string; ordem2: number }) => {
+      const { error: err1 } = await supabase.from("servicos").update({ ordem: ordem1 }).eq("id", id1);
+      if (err1) throw err1;
+      const { error: err2 } = await supabase.from("servicos").update({ ordem: ordem2 }).eq("id", id2);
+      if (err2) throw err2;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
+      queryClient.invalidateQueries({ queryKey: ["servicos"] });
+    },
+  });
+
+  const moveUp = (idx: number) => {
+    if (idx === 0) return;
+    const s1 = servicos[idx];
+    const s2 = servicos[idx - 1];
+    reorderMutation.mutate({ id1: s1.id, ordem1: s2.ordem, id2: s2.id, ordem2: s1.ordem });
+  };
+
+  const moveDown = (idx: number) => {
+    if (idx === servicos.length - 1) return;
+    const s1 = servicos[idx];
+    const s2 = servicos[idx + 1];
+    reorderMutation.mutate({ id1: s1.id, ordem1: s2.ordem, id2: s2.id, ordem2: s1.ordem });
+  };
+
   const startEdit = (s: Servico) => {
     setEditingId(s.id);
     setEditValues({ nome: s.nome, preco: s.preco, duracao_minutos: s.duracao_minutos });
@@ -110,7 +139,7 @@ export default function AdminServicos() {
   };
 
   return (
-    <div className="container max-w-lg py-8 space-y-6 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-heading tracking-wider">SERVIÇOS</h2>
         <p className="text-muted-foreground font-body text-sm">Gerencie preços e duração dos serviços</p>
@@ -145,7 +174,7 @@ export default function AdminServicos() {
       )}
 
       <div className="space-y-3">
-        {servicos.map((s) => {
+        {servicos.map((s, idx) => {
           const isEditing = editingId === s.id;
           return (
             <div
@@ -153,7 +182,29 @@ export default function AdminServicos() {
               className={`bg-card rounded-xl p-4 border border-border space-y-3 ${!s.ativo ? "opacity-50" : ""}`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-heading text-xl tracking-wide">{s.nome.toUpperCase()}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => moveUp(idx)}
+                      disabled={idx === 0}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => moveDown(idx)}
+                      disabled={idx === servicos.length - 1}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <span className="font-heading text-xl tracking-wide">{s.nome.toUpperCase()}</span>
+                </div>
                 <Switch checked={s.ativo} onCheckedChange={() => toggleAtivo(s)} />
               </div>
 

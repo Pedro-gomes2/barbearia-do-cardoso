@@ -81,7 +81,7 @@ export default function AdminConfiguracoes() {
   const status = agendaStatus(inicio, fim);
 
   return (
-    <div className="container max-w-lg py-8 space-y-6 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-1">
         <Settings className="h-8 w-8 text-primary mx-auto" />
         <h2 className="text-3xl font-heading tracking-wider">CONFIGURAÇÕES</h2>

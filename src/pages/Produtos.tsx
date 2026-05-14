@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ShoppingBag, ArrowLeft } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -22,16 +22,17 @@ export default function Produtos() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="container max-w-3xl py-10 space-y-8 animate-fade-in">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3">
-            <ShoppingBag className="h-7 w-7 text-primary" />
-            <h1 className="text-4xl font-heading tracking-wider">PRODUTOS</h1>
-          </div>
+      <div className="container max-w-2xl py-12 space-y-8 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="font-heading tracking-widest text-xs">
+          <ArrowLeft className="h-4 w-4 mr-2" /> VOLTAR
+        </Button>
+        <div className="flex items-center gap-3">
+          <ShoppingBag className="h-6 w-6 text-primary" />
+          <h1 className="text-3xl font-heading tracking-wider">PRODUTOS</h1>
         </div>
+        <Home className="h-5 w-5 text-muted-foreground cursor-pointer" onClick={() => navigate("/")} />
+      </div>
 
         {isLoading && (
           <p className="text-muted-foreground font-body text-center py-16">Carregando produtos...</p>
@@ -47,17 +48,6 @@ export default function Produtos() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {produtos.map((p) => (
             <div key={p.id} className="bg-card rounded-xl border border-border overflow-hidden flex flex-col">
-              {p.imagem_url ? (
-                <img
-                  src={p.imagem_url}
-                  alt={p.nome}
-                  className="w-full h-48 object-cover"
-                />
-              ) : (
-                <div className="w-full h-48 bg-muted flex items-center justify-center">
-                  <ShoppingBag className="h-12 w-12 text-muted-foreground" />
-                </div>
-              )}
               <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
                 <div className="space-y-1">
                   <h3 className="font-heading text-xl tracking-wide">{p.nome.toUpperCase()}</h3>

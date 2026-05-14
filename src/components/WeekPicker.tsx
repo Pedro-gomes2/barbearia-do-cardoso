@@ -3,6 +3,8 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WeekPickerProps {
   selected?: Date;
@@ -15,6 +17,16 @@ export function WeekPicker({ selected, onSelect, disablePast = true }: WeekPicke
   today.setHours(0, 0, 0, 0);
   const [weekStart, setWeekStart] = useState<Date>(startOfWeek(selected ?? today, { weekStartsOn: 0 }));
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const { data: config = [] } = useQuery({
+    queryKey: ["agenda-config"],
+    queryFn: async () => {
+      const { data } = await supabase.from("configuracoes_agenda").select("dia_semana, ativo");
+      return data || [];
+    }
+  });
+
+  const inactiveDays = new Set(config.filter(c => !c.ativo).map(c => c.dia_semana));
 
   return (
     <div className="space-y-3">
@@ -31,20 +43,24 @@ export function WeekPicker({ selected, onSelect, disablePast = true }: WeekPicke
       </div>
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
+          const dayOfWeek = d.getDay();
+          const isInactive = inactiveDays.has(dayOfWeek);
           const isPast = disablePast && d < today;
           const isSelected = selected && isSameDay(d, selected);
           const isToday = isSameDay(d, today);
+          const isDisabled = isPast || isInactive;
+
           return (
             <button
               key={d.toISOString()}
               type="button"
-              disabled={isPast}
+              disabled={isDisabled}
               onClick={() => onSelect(d)}
               className={`flex flex-col items-center gap-0.5 p-2 rounded-lg border transition-all ${
                 isSelected
                   ? "bg-primary text-primary-foreground border-primary"
-                  : isPast
-                  ? "border-border/50 opacity-30 cursor-not-allowed"
+                  : isDisabled
+                  ? "border-border/50 opacity-30 cursor-not-allowed bg-muted/20"
                   : "border-border bg-card hover:border-primary/60"
               }`}
             >

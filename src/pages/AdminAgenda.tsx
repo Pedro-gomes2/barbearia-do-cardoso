@@ -130,7 +130,7 @@ export default function AdminAgenda() {
   const getCustomSlotsForDay = (day: number) => allCustomSlots.filter((s) => s.dia_semana === day);
 
   return (
-    <div className="container max-w-lg py-8 space-y-6 animate-fade-in">
+    <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-heading tracking-wider">AGENDA</h2>
         <p className="text-muted-foreground font-body text-sm">Ative os dias e configure os horários</p>

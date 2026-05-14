@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parse, isBefore, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Scissors, Lock, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarIcon, Scissors, Lock, Clock, ChevronDown, ChevronUp, ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TimeSlotGrid } from "@/components/TimeSlotGrid";
 import { ServiceSelector, type Servico } from "@/components/ServiceSelector";
@@ -81,6 +81,13 @@ export default function Agendamento() {
       </header>
 
       <main className="container max-w-lg py-8 space-y-8 animate-fade-in">
+        <div className="pt-4 pb-8 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="font-heading tracking-widest text-xs">
+            <ArrowLeft className="h-4 w-4 mr-2" /> VOLTAR
+          </Button>
+          <Home className="h-5 w-5 text-muted-foreground cursor-pointer" onClick={() => navigate("/")} />
+        </div>
+
         <div className="text-center space-y-2">
           <h2 className="text-4xl">AGENDE SEU HORÁRIO</h2>
           <p className="text-muted-foreground">Escolha a data, serviço e horário</p>
