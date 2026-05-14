@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, Star } from "lucide-react";
 
 export interface Servico {
   id: string;
@@ -29,11 +29,17 @@ export function ServiceSelector({ selectedIds, onToggle }: ServiceSelectorProps)
   });
 
   if (isLoading) {
-    return <div className="text-center py-4 text-muted-foreground font-body">Carregando serviços...</div>;
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-20 w-full bg-muted animate-pulse rounded-xl" />
+        ))}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 gap-3">
       {servicos.map((s) => {
         const selected = selectedIds.includes(s.id);
         return (
@@ -41,28 +47,44 @@ export function ServiceSelector({ selectedIds, onToggle }: ServiceSelectorProps)
             key={s.id}
             type="button"
             onClick={() => onToggle(s)}
-            className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${
+            className={`group relative w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 ${
               selected
-                ? "border-primary bg-primary/10"
-                : "border-border bg-card hover:border-primary/50"
+                ? "border-primary bg-primary/5 shadow-md scale-[1.02]"
+                : "border-border bg-card hover:border-primary/30"
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
-                selected ? "bg-primary border-primary" : "border-muted-foreground/40"
-              }`}>
-                {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+            {selected && (
+              <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1 shadow-lg animate-in zoom-in-50 duration-300">
+                <Check className="h-4 w-4" />
               </div>
-              <div className="text-left">
-                <p className="font-body text-sm">{s.nome}</p>
-                <p className="font-body text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> {s.duracao_minutos} min
+            )}
+            
+            <div className="flex items-center gap-4 text-left">
+              <div className={`p-3 rounded-xl transition-colors ${
+                selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
+              }`}>
+                <Star className={`h-5 w-5 ${selected ? "fill-current" : ""}`} />
+              </div>
+              <div className="space-y-0.5">
+                <p className={`font-heading tracking-wide text-lg transition-colors ${selected ? "text-primary" : "text-foreground"}`}>
+                  {s.nome.toUpperCase()}
                 </p>
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1 text-[10px] uppercase font-body font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    <Clock className="h-3 w-3" /> {s.duracao_minutos} MIN
+                  </span>
+                  {selected && (
+                    <span className="text-[10px] uppercase font-bold text-primary animate-pulse">Selecionado</span>
+                  )}
+                </div>
               </div>
             </div>
-            <span className="text-primary font-heading text-lg">
-              R$ {s.preco.toFixed(2).replace(".", ",")}
-            </span>
+
+            <div className="text-right">
+              <p className={`font-heading text-2xl transition-colors ${selected ? "text-primary" : "text-foreground"}`}>
+                R$ {Number(s.preco).toFixed(0)}
+              </p>
+            </div>
           </button>
         );
       })}

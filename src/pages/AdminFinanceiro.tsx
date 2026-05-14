@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DollarSign, TrendingUp, Calendar, ArrowLeft, ArrowRight, Wallet, Info, Phone, Clock, User, Scissors } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ArrowLeft, ArrowRight, Wallet, Info, Phone, Clock, User, Scissors, ArrowDownCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -20,6 +20,7 @@ export default function AdminFinanceiro() {
   const [refDate, setRefDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [selectedApt, setSelectedApt] = useState<any>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   const range = (() => {
     if (period === "dia") {
@@ -31,67 +32,89 @@ export default function AdminFinanceiro() {
     if (period === "mes") {
       return { start: startOfMonth(refDate), end: endOfMonth(refDate) };
     }
-    return { start: subMonths(new Date(), 12), end: addMonths(new Date(), 1) };
+    return { start: subMonths(new Date(), 24), end: addMonths(new Date(), 1) };
   })();
 
-  const { data: report = { total: 0, count: 0, items: [] }, isLoading } = useQuery({
+  const { data: report = { total: 0, count: 0, items: [], totalDespesas: 0 }, isLoading } = useQuery({
     queryKey: ["financeiro", period, range.start.toISOString(), range.end.toISOString(), statusFilter],
     queryFn: async () => {
-      let query = supabase
-        .from("agendamentos")
-        .select("*, usuarios(nome, telefone), servicos(nome, preco)")
-        .order("data", { ascending: false })
-        .order("horario", { ascending: false });
+      try {
+        setDebugError(null);
+        let query = supabase
+          .from("agendamentos")
+          .select("*, usuarios(nome, telefone), servicos(nome, preco)")
+          .order("data", { ascending: false })
+          .order("horario", { ascending: false });
 
-      if (period !== "historico") {
-        query = query
-          .eq("status", "finalizado")
+        let despesasQuery = supabase
+          .from("despesas")
+          .select("valor")
           .gte("data", format(range.start, "yyyy-MM-dd"))
           .lte("data", format(range.end, "yyyy-MM-dd"));
-      } else {
-        if (statusFilter !== "todos") {
-          query = query.eq("status", statusFilter);
+
+        if (period !== "historico") {
+          query = query
+            .eq("status", "finalizado")
+            .gte("data", format(range.start, "yyyy-MM-dd"))
+            .lte("data", format(range.end, "yyyy-MM-dd"));
+        } else {
+          if (statusFilter !== "todos") {
+            query = query.eq("status", statusFilter);
+          }
+          query = query.limit(100);
         }
-      }
 
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const aptIds = (data || []).map(a => a.id);
-      let total = 0;
-      const items: any[] = [];
-
-      if (aptIds.length > 0) {
-        const { data: junction } = await supabase
-          .from("agendamento_servicos")
-          .select("agendamento_id, servicos(nome, preco)")
-          .in("agendamento_id", aptIds);
+        const [resAgendamentos, resDespesas] = await Promise.all([query, despesasQuery]);
         
-        const priceMap: Record<string, { total: number, names: string[] }> = {};
-        (junction || []).forEach((j: any) => {
-          if (!priceMap[j.agendamento_id]) priceMap[j.agendamento_id] = { total: 0, names: [] };
-          priceMap[j.agendamento_id].total += Number(j.servicos?.preco || 0);
-          priceMap[j.agendamento_id].names.push(j.servicos?.nome);
-        });
+        if (resAgendamentos.error) throw resAgendamentos.error;
+        if (resDespesas.error) throw resDespesas.error;
 
-        data.forEach((a: any) => {
-          const price = priceMap[a.id]?.total || Number(a.servicos?.preco || 0);
-          const services = priceMap[a.id]?.names.join(", ") || a.servicos?.nome || "Sem serviço";
-          if (a.status === "finalizado") total += price;
-          items.push({
-            id: a.id,
-            cliente: a.usuarios?.nome || "Cliente avulso",
-            telefone: a.usuarios?.telefone || a.telefone_cliente || "Não informado",
-            data: a.data,
-            horario: a.horario,
-            servicos: services,
-            valor: price,
-            status: a.status
+        const data = resAgendamentos.data || [];
+        const despesasData = resDespesas.data || [];
+
+        const totalDespesas = despesasData.reduce((acc, curr) => acc + Number(curr.valor), 0);
+        const aptIds = data.map(a => a.id);
+        let total = 0;
+        const items: any[] = [];
+
+        if (aptIds.length > 0) {
+          const { data: junction, error: jError } = await supabase
+            .from("agendamento_servicos")
+            .select("agendamento_id, servicos(nome, preco)")
+            .in("agendamento_id", aptIds);
+          
+          if (jError) throw jError;
+
+          const priceMap: Record<string, { total: number, names: string[] }> = {};
+          (junction || []).forEach((j: any) => {
+            if (!priceMap[j.agendamento_id]) priceMap[j.agendamento_id] = { total: 0, names: [] };
+            priceMap[j.agendamento_id].total += Number(j.servicos?.preco || 0);
+            priceMap[j.agendamento_id].names.push(j.servicos?.nome);
           });
-        });
-      }
 
-      return { total, count: data.filter(a => a.status === 'finalizado').length, items };
+          data.forEach((a: any) => {
+            const price = priceMap[a.id]?.total || Number(a.servicos?.preco || 0);
+            const services = priceMap[a.id]?.names.join(", ") || a.servicos?.nome || "Sem serviço";
+            if (a.status === "finalizado") total += price;
+            items.push({
+              id: a.id,
+              cliente: a.usuarios?.nome || "Cliente avulso",
+              telefone: a.usuarios?.telefone || a.telefone_cliente || "Não informado",
+              data: a.data,
+              horario: a.horario,
+              servicos: services,
+              valor: price,
+              status: a.status
+            });
+          });
+        }
+
+        return { total, count: data.filter(a => a.status === 'finalizado').length, items, totalDespesas };
+      } catch (err: any) {
+        console.error("Erro no financeiro:", err);
+        setDebugError(err.message);
+        throw err;
+      }
     }
   });
 
@@ -131,30 +154,39 @@ export default function AdminFinanceiro() {
         </TabsList>
 
         <div className="mt-8 space-y-8">
-          {period !== "historico" && (
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex-1 space-y-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex-1 space-y-6">
+              {period !== "historico" ? (
                 <div className="flex items-center justify-between bg-card border border-border p-4 rounded-2xl shadow-sm">
                   <Button variant="ghost" size="icon" onClick={navPrev}><ArrowLeft className="h-5 w-5" /></Button>
                   <p className="font-heading text-lg uppercase tracking-widest text-primary">{label}</p>
                   <Button variant="ghost" size="icon" onClick={navNext}><ArrowRight className="h-5 w-5" /></Button>
                 </div>
+              ) : (
+                <div className="bg-primary/5 border border-primary/10 p-4 rounded-2xl text-center">
+                  <p className="font-heading text-lg uppercase tracking-widest text-primary">Resumo dos Últimos 24 Meses</p>
+                </div>
+              )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-primary/10 border border-primary/20 rounded-2xl p-8 text-center space-y-2">
-                    <Wallet className="h-6 w-6 text-primary mx-auto mb-2" />
-                    <p className="text-4xl font-heading text-primary">R$ {report.total.toFixed(2).replace(".", ",")}</p>
-                    <p className="text-xs text-muted-foreground font-body tracking-widest uppercase font-semibold">Faturamento Total</p>
-                  </div>
-                  <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-2 shadow-sm">
-                    <TrendingUp className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-4xl font-heading">{report.count}</p>
-                    <p className="text-xs text-muted-foreground font-body tracking-widest uppercase font-semibold">Serviços Finalizados</p>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 text-center space-y-1 shadow-sm">
+                  <Wallet className="h-5 w-5 text-primary mx-auto mb-1" />
+                  <p className="text-2xl font-heading text-primary">R$ {report.total.toFixed(2).replace(".", ",")}</p>
+                  <p className="text-[10px] text-muted-foreground font-body tracking-widest uppercase font-bold">Faturamento Bruto</p>
+                </div>
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center space-y-1 shadow-sm">
+                  <ArrowDownCircle className="h-5 w-5 text-red-500 mx-auto mb-1" />
+                  <p className="text-2xl font-heading text-red-600">R$ {report.totalDespesas.toFixed(2).replace(".", ",")}</p>
+                  <p className="text-[10px] text-muted-foreground font-body tracking-widest uppercase font-bold">Total Despesas</p>
+                </div>
+                <div className="bg-green-50 border border-green-100 rounded-2xl p-6 text-center space-y-1 shadow-sm">
+                  <TrendingUp className="h-5 w-5 text-green-600 mx-auto mb-1" />
+                  <p className="text-2xl font-heading text-green-700">R$ {(report.total - report.totalDespesas).toFixed(2).replace(".", ",")}</p>
+                  <p className="text-[10px] text-muted-foreground font-body tracking-widest uppercase font-bold">Lucro Real</p>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           {period === "historico" && (
             <div className="flex justify-center gap-2 flex-wrap">
@@ -177,16 +209,26 @@ export default function AdminFinanceiro() {
               {period === "historico" ? "LISTA COMPLETA" : "DETALHAMENTO DO PERÍODO"}
             </h3>
             
+            {debugError && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-2">
+                <p className="text-red-600 font-body text-sm font-bold">Erro ao carregar dados:</p>
+                <p className="text-red-500 font-body text-xs">{debugError}</p>
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-2">
+                  TENTAR NOVAMENTE
+                </Button>
+              </div>
+            )}
+
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                 <p className="text-muted-foreground font-body animate-pulse">Carregando dados...</p>
               </div>
-            ) : report.items.length === 0 ? (
+            ) : !debugError && report.items.length === 0 ? (
               <div className="bg-muted/30 border border-dashed border-border rounded-2xl p-12 text-center">
                 <p className="text-muted-foreground font-body">Nenhum registro encontrado para este critério.</p>
               </div>
-            ) : (
+            ) : !debugError && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {report.items.map((item: any) => (
                   <div 

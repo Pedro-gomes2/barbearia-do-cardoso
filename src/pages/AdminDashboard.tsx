@@ -427,6 +427,24 @@ function AppointmentsList({ appointments, onCancel, onFinalize }: { appointments
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => {
+                  const tel = apt.usuarios?.telefone?.replace(/\D/g, "");
+                  const dataFormatada = format(parse(apt.data, "yyyy-MM-dd", new Date()), "dd/MM", { locale: ptBR });
+                  const msg = encodeURIComponent(
+                    `Olá ${apt.usuarios?.nome}! Sou da Barbearia Cardoso. Passando para lembrar do seu agendamento hoje (${dataFormatada}) às ${apt.horario.slice(0, 5)}. Até logo!`
+                  );
+                  window.open(`https://wa.me/55${tel}?text=${msg}`, "_blank");
+                }}
+                className="text-green-600 hover:text-green-700 font-heading"
+              >
+                <div className="flex items-center gap-1">
+                  <span className="sm:hidden text-lg">📱</span>
+                  <span className="hidden sm:inline">Lembrar</span>
+                </div>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => onFinalize(apt)}
                 className="text-primary hover:text-primary font-heading"
               >

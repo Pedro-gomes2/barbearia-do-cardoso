@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Wrench, Clock, ShoppingBag, Wallet } from "lucide-react";
+import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Wrench, Clock, ShoppingBag, Wallet, Moon, Sun } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const items = [
   { title: "Dashboard", url: "/admin/dashboard", icon: BarChart3 },
@@ -24,6 +25,8 @@ const items = [
   { title: "Horários", url: "/admin/horarios", icon: Clock },
   { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
   { title: "Financeiro", url: "/admin/financeiro", icon: Wallet },
+  { title: "Despesas", url: "/admin/despesas", icon: Wallet },
+  { title: "Portfólio", url: "/admin/portfolio", icon: Scissors },
   { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
   { title: "Ver Site", url: "/", icon: Scissors },
 ];
@@ -36,6 +39,22 @@ export function AdminSidebar() {
 
   const isActive = (path: string) => pathname === path;
 
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -71,7 +90,16 @@ export function AdminSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 space-y-2">
+        <Button
+          variant="ghost"
+          size={collapsed ? "icon" : "default"}
+          onClick={() => setIsDark(!isDark)}
+          className="w-full justify-start text-muted-foreground"
+        >
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {!collapsed && <span className="ml-2">{isDark ? "Modo Claro" : "Modo Escuro"}</span>}
+        </Button>
         <Button
           variant="ghost"
           size={collapsed ? "icon" : "default"}

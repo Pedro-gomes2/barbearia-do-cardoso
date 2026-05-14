@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pencil, Save, X, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { GripVertical, Pencil, Save, X, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -67,6 +68,7 @@ export default function AdminServicos() {
         nome: newValues.nome.trim(),
         preco: newValues.preco,
         duracao_minutos: newValues.duracao_minutos,
+        ordem: servicos.length > 0 ? Math.max(...servicos.map(s => s.ordem)) + 1 : 0
       });
       if (error) throw error;
     },
@@ -97,32 +99,35 @@ export default function AdminServicos() {
     },
   });
 
-
-  const reorderMutation = useMutation({
-    mutationFn: async ({ id1, ordem1, id2, ordem2 }: { id1: string; ordem1: number; id2: string; ordem2: number }) => {
-      const { error: err1 } = await supabase.from("servicos").update({ ordem: ordem1 }).eq("id", id1);
-      if (err1) throw err1;
-      const { error: err2 } = await supabase.from("servicos").update({ ordem: ordem2 }).eq("id", id2);
-      if (err2) throw err2;
+  const saveOrderMutation = useMutation({
+    mutationFn: async (items: Servico[]) => {
+      const updates = items.map((item, index) => 
+        supabase.from("servicos").update({ ordem: index }).eq("id", item.id)
+      );
+      const results = await Promise.all(updates);
+      const firstError = results.find(r => r.error);
+      if (firstError) throw firstError.error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
       queryClient.invalidateQueries({ queryKey: ["servicos"] });
     },
+    onError: (err: any) => {
+      toast({ title: "Erro ao salvar ordem", description: err.message, variant: "destructive" });
+    }
   });
 
-  const moveUp = (idx: number) => {
-    if (idx === 0) return;
-    const s1 = servicos[idx];
-    const s2 = servicos[idx - 1];
-    reorderMutation.mutate({ id1: s1.id, ordem1: s2.ordem, id2: s2.id, ordem2: s1.ordem });
-  };
-
-  const moveDown = (idx: number) => {
-    if (idx === servicos.length - 1) return;
-    const s1 = servicos[idx];
-    const s2 = servicos[idx + 1];
-    reorderMutation.mutate({ id1: s1.id, ordem1: s2.ordem, id2: s2.id, ordem2: s1.ordem });
+  const onDragEnd = (result: any) => {
+    if (!result.destination) return;
+    const items = Array.from(servicos);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    // Update local state immediately for UX
+    queryClient.setQueryData(["admin-servicos"], items);
+    
+    // Sync with DB
+    saveOrderMutation.mutate(items);
   };
 
   const startEdit = (s: Servico) => {
@@ -142,7 +147,7 @@ export default function AdminServicos() {
     <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-heading tracking-wider">SERVIÇOS</h2>
-        <p className="text-muted-foreground font-body text-sm">Gerencie preços e duração dos serviços</p>
+        <p className="text-muted-foreground font-body text-sm">Gerencie preços e duração dos serviços (Arraste para reordenar)</p>
       </div>
 
       <Button onClick={() => setShowNew(!showNew)} variant={showNew ? "secondary" : "default"} className="w-full font-heading tracking-widest">
@@ -173,121 +178,116 @@ export default function AdminServicos() {
         </div>
       )}
 
-      <div className="space-y-3">
-        {servicos.map((s, idx) => {
-          const isEditing = editingId === s.id;
-          return (
-            <div
-              key={s.id}
-              className={`bg-card rounded-xl p-4 border border-border space-y-3 ${!s.ativo ? "opacity-50" : ""}`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={() => moveUp(idx)}
-                      disabled={idx === 0}
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={() => moveDown(idx)}
-                      disabled={idx === servicos.length - 1}
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <span className="font-heading text-xl tracking-wide">{s.nome.toUpperCase()}</span>
-                </div>
-                <Switch checked={s.ativo} onCheckedChange={() => toggleAtivo(s)} />
-              </div>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="servicos">
+          {(provided) => (
+            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+              {servicos.map((s, index) => {
+                const isEditing = editingId === s.id;
+                return (
+                  <Draggable key={s.id} draggableId={s.id} index={index}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`bg-card rounded-xl p-4 border border-border space-y-3 ${!s.ativo ? "opacity-50" : ""}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div {...provided.dragHandleProps} className="cursor-grab hover:text-primary">
+                              <GripVertical className="h-5 w-5" />
+                            </div>
+                            <span className="font-heading text-xl tracking-wide">{s.nome.toUpperCase()}</span>
+                          </div>
+                          <Switch checked={s.ativo} onCheckedChange={() => toggleAtivo(s)} />
+                        </div>
 
-              {isEditing ? (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground font-body">Nome</label>
-                    <Input
-                      value={editValues.nome ?? ""}
-                      onChange={(e) => setEditValues({ ...editValues, nome: e.target.value })}
-                      placeholder="Nome do serviço"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={editValues.preco ?? ""}
-                        onChange={(e) => setEditValues({ ...editValues, preco: Number(e.target.value) })}
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs text-muted-foreground font-body">Duração (min)</label>
-                      <Input
-                        type="number"
-                        value={editValues.duracao_minutos ?? ""}
-                        onChange={(e) => setEditValues({ ...editValues, duracao_minutos: Number(e.target.value) })}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => saveEdit(s.id)} disabled={updateMutation.isPending} className="flex-1">
-                      <Save className="h-4 w-4 mr-1" /> Salvar
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div className="font-body text-sm text-muted-foreground">
-                    <span className="text-primary font-semibold">R$ {s.preco.toFixed(2).replace(".", ",")}</span>
-                    {" · "}
-                    {s.duracao_minutos} min
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir serviço</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir o serviço <strong>{s.nome}</strong>? Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteMutation.mutate(s.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              )}
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-xs text-muted-foreground font-body">Nome</label>
+                              <Input
+                                value={editValues.nome ?? ""}
+                                onChange={(e) => setEditValues({ ...editValues, nome: e.target.value })}
+                                placeholder="Nome do serviço"
+                              />
+                            </div>
+                            <div className="flex gap-3">
+                              <div className="flex-1 space-y-1">
+                                <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={editValues.preco ?? ""}
+                                  onChange={(e) => setEditValues({ ...editValues, preco: Number(e.target.value) })}
+                                />
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <label className="text-xs text-muted-foreground font-body">Duração (min)</label>
+                                <Input
+                                  type="number"
+                                  value={editValues.duracao_minutos ?? ""}
+                                  onChange={(e) => setEditValues({ ...editValues, duracao_minutos: Number(e.target.value) })}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => saveEdit(s.id)} disabled={updateMutation.isPending} className="flex-1">
+                                <Save className="h-4 w-4 mr-1" /> Salvar
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="font-body text-sm text-muted-foreground">
+                              <span className="text-primary font-semibold">R$ {Number(s.preco).toFixed(2).replace(".", ",")}</span>
+                              {" · "}
+                              {s.duracao_minutos} min
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir serviço</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja excluir o serviço <strong>{s.nome}</strong>? Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteMutation.mutate(s.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </Droppable>
+      </DragDropContext>
     </div>
   );
 }
