@@ -26,6 +26,7 @@ interface Servico {
   duracao_minutos: number;
   ativo: boolean;
   ordem: number;
+  tipo: 'corte_barba' | 'extra'; 
 }
 
 export default function AdminServicos() {
@@ -34,8 +35,14 @@ export default function AdminServicos() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Servico>>({});
   const [showNew, setShowNew] = useState(false);
-  const [newValues, setNewValues] = useState({ nome: "", preco: 0, duracao_minutos: 60 });
+  const [newValues, setNewValues] = useState<{
+    nome: string;
+    preco: number;
+    duracao_minutos: number;
+    tipo: 'corte_barba' | 'extra';
+  }>({ nome: "", preco: 0, duracao_minutos: 45, tipo: "corte_barba" });
 
+  // Busca os serviços
   const { data: servicos = [] } = useQuery({
     queryKey: ["admin-servicos"],
     queryFn: async () => {
@@ -44,15 +51,19 @@ export default function AdminServicos() {
     },
   });
 
+  // Filtros apenas para as duas categorias solicitadas
+  const listaCorteBarba = servicos.filter(s => s.tipo === 'corte_barba' || !s.tipo);
+  const listaExtras = servicos.filter(s => s.tipo === 'extra');
+
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...values }: { id: string; nome?: string; preco?: number; duracao_minutos?: number; ativo?: boolean }) => {
+    mutationFn: async ({ id, ...values }: { id: string; nome?: string; preco?: number; duracao_minutos?: number; ativo?: boolean; tipo?: string }) => {
       const { error } = await supabase.from("servicos").update(values).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
       queryClient.invalidateQueries({ queryKey: ["servicos"] });
-      toast({ title: "Serviço atualizado!" });
+      toast({ title: "Atualizado com sucesso!" });
       setEditingId(null);
       setEditValues({});
     },
@@ -64,20 +75,25 @@ export default function AdminServicos() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!newValues.nome.trim()) throw new Error("Nome é obrigatório");
+      
+      const itensDoMesmoTipo = servicos.filter(s => s.tipo === newValues.tipo);
+      const proximaOrdem = itensDoMesmoTipo.length > 0 ? Math.max(...itensDoMesmoTipo.map(s => s.ordem)) + 1 : 0;
+
       const { error } = await supabase.from("servicos").insert({
         nome: newValues.nome.trim(),
         preco: newValues.preco,
         duracao_minutos: newValues.duracao_minutos,
-        ordem: servicos.length > 0 ? Math.max(...servicos.map(s => s.ordem)) + 1 : 0
+        tipo: newValues.tipo,
+        ordem: proximaOrdem
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
       queryClient.invalidateQueries({ queryKey: ["servicos"] });
-      toast({ title: "Serviço criado!" });
+      toast({ title: "Criado com sucesso!" });
       setShowNew(false);
-      setNewValues({ nome: "", preco: 0, duracao_minutos: 60 });
+      setNewValues({ nome: "", preco: 0, duracao_minutos: 45, tipo: "corte_barba" });
     },
     onError: (err: any) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -92,7 +108,7 @@ export default function AdminServicos() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });
       queryClient.invalidateQueries({ queryKey: ["servicos"] });
-      toast({ title: "Serviço excluído!" });
+      toast({ title: "Excluído com sucesso!" });
     },
     onError: (err: any) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -119,20 +135,29 @@ export default function AdminServicos() {
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
-    const items = Array.from(servicos);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
     
-    // Update local state immediately for UX
-    queryClient.setQueryData(["admin-servicos"], items);
+    const { source, destination } = result;
+    const tipoLista = source.droppableId as 'corte_barba' | 'extra';
     
-    // Sync with DB
-    saveOrderMutation.mutate(items);
+    const itensFiltrados = servicos.filter(s => s.tipo === tipoLista);
+    const [reorderedItem] = itensFiltrados.splice(source.index, 1);
+    itensFiltrados.splice(destination.index, 0, reorderedItem);
+
+    const listaAtualizada = servicos.map(s => {
+      if (s.tipo === tipoLista) {
+        const novoIndex = itensFiltrados.findIndex(item => item.id === s.id);
+        return { ...s, ordem: novoIndex };
+      }
+      return s;
+    }).sort((a, b) => a.ordem - b.ordem);
+
+    queryClient.setQueryData(["admin-servicos"], listaAtualizada);
+    saveOrderMutation.mutate(itensFiltrados);
   };
 
   const startEdit = (s: Servico) => {
     setEditingId(s.id);
-    setEditValues({ nome: s.nome, preco: s.preco, duracao_minutos: s.duracao_minutos });
+    setEditValues({ nome: s.nome, preco: s.preco, duracao_minutos: s.duracao_minutos, tipo: s.tipo });
   };
 
   const saveEdit = (id: string) => {
@@ -143,11 +168,132 @@ export default function AdminServicos() {
     updateMutation.mutate({ id: s.id, ativo: !s.ativo });
   };
 
+  const RenderGrupamentoServicos = ({ titulo, tipoId, lista }: { titulo: string, tipoId: 'corte_barba' | 'extra', lista: Servico[] }) => (
+    <div className="space-y-4 pt-4 border-t border-border/60">
+      <h3 className="text-xl font-heading tracking-wider text-primary uppercase">{titulo} ({lista.length})</h3>
+      
+      <Droppable droppableId={tipoId}>
+        {(provided) => (
+          <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3 min-h-[50px]">
+            {lista.map((s, index) => {
+              const isEditing = editingId === s.id;
+              return (
+                <Draggable key={s.id} draggableId={s.id} index={index}>
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      className={`bg-card rounded-xl p-4 border border-border space-y-3 ${!s.ativo ? "opacity-50" : ""}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div {...provided.dragHandleProps} className="cursor-grab hover:text-primary">
+                            <GripVertical className="h-5 w-5" />
+                          </div>
+                          <span className="font-heading text-lg tracking-wide">{s.nome.toUpperCase()}</span>
+                        </div>
+                        <Switch checked={s.ativo} onCheckedChange={() => toggleAtivo(s)} />
+                      </div>
+
+                      {isEditing ? (
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground font-body">Nome</label>
+                            <Input
+                              value={editValues.nome ?? ""}
+                              onChange={(e) => setEditValues({ ...editValues, nome: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-1 space-y-1">
+                              <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={editValues.preco ?? ""}
+                                onChange={(e) => setEditValues({ ...editValues, preco: Number(e.target.value) })}
+                              />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <label className="text-xs text-muted-foreground font-body">Duração (min)</label>
+                              <Input
+                                type="number"
+                                value={editValues.duracao_minutos ?? ""}
+                                onChange={(e) => setEditValues({ ...editValues, duracao_minutos: Number(e.target.value) })}
+                              />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <label className="text-xs text-muted-foreground font-body">Categoria</label>
+                              <select 
+                                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={editValues.tipo ?? "corte_barba"}
+                                onChange={(e) => setEditValues({ ...editValues, tipo: e.target.value as any })}
+                              >
+                                <option value="corte_barba">Corte / Barba</option>
+                                <option value="extra">Serviço Extra</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => saveEdit(s.id)} disabled={updateMutation.isPending} className="flex-1">
+                              <Save className="h-4 w-4 mr-1" /> Salvar
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="font-body text-sm text-muted-foreground">
+                            <span className="text-primary font-semibold">R$ {Number(s.preco).toFixed(2).replace(".", ",")}</span>
+                            {" · "}{s.duracao_minutos} min
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir item</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir o serviço <strong>{s.nome}</strong>?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteMutation.mutate(s.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Draggable>
+              );
+            })}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </div>
+  );
+
   return (
     <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-heading tracking-wider">SERVIÇOS</h2>
-        <p className="text-muted-foreground font-body text-sm">Gerencie preços e duração dos serviços (Arraste para reordenar)</p>
+        <h2 className="text-3xl font-heading tracking-wider">GERENCIAMENTO DE SERVIÇOS</h2>
+        <p className="text-muted-foreground font-body text-sm">Organize preços, tempos e ordens visuais do menu</p>
       </div>
 
       <Button onClick={() => setShowNew(!showNew)} variant={showNew ? "secondary" : "default"} className="w-full font-heading tracking-widest">
@@ -157,10 +303,24 @@ export default function AdminServicos() {
 
       {showNew && (
         <div className="bg-card rounded-xl p-4 border border-primary/50 space-y-3 animate-fade-in">
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground font-body">Nome do serviço</label>
-            <Input value={newValues.nome} onChange={(e) => setNewValues({ ...newValues, nome: e.target.value })} placeholder="Ex: Barba" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-body">Nome do serviço</label>
+              <Input value={newValues.nome} onChange={(e) => setNewValues({ ...newValues, nome: e.target.value })} placeholder="Ex: Corte Degradê" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-body">Categoria do Serviço</label>
+              <select 
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={newValues.tipo}
+                onChange={(e) => setNewValues({ ...newValues, tipo: e.target.value as any })}
+              >
+                <option value="corte_barba">Serviço Corte / Barba</option>
+                <option value="extra">Serviço Extra</option>
+              </select>
+            </div>
           </div>
+          
           <div className="flex gap-3">
             <div className="flex-1 space-y-1">
               <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
@@ -171,6 +331,7 @@ export default function AdminServicos() {
               <Input type="number" value={newValues.duracao_minutos || ""} onChange={(e) => setNewValues({ ...newValues, duracao_minutos: Number(e.target.value) })} />
             </div>
           </div>
+          
           <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending} className="w-full font-heading tracking-widest">
             <Save className="h-4 w-4 mr-2" />
             {createMutation.isPending ? "SALVANDO..." : "SALVAR SERVIÇO"}
@@ -179,114 +340,10 @@ export default function AdminServicos() {
       )}
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="servicos">
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
-              {servicos.map((s, index) => {
-                const isEditing = editingId === s.id;
-                return (
-                  <Draggable key={s.id} draggableId={s.id} index={index}>
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`bg-card rounded-xl p-4 border border-border space-y-3 ${!s.ativo ? "opacity-50" : ""}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div {...provided.dragHandleProps} className="cursor-grab hover:text-primary">
-                              <GripVertical className="h-5 w-5" />
-                            </div>
-                            <span className="font-heading text-xl tracking-wide">{s.nome.toUpperCase()}</span>
-                          </div>
-                          <Switch checked={s.ativo} onCheckedChange={() => toggleAtivo(s)} />
-                        </div>
-
-                        {isEditing ? (
-                          <div className="space-y-3">
-                            <div className="space-y-1">
-                              <label className="text-xs text-muted-foreground font-body">Nome</label>
-                              <Input
-                                value={editValues.nome ?? ""}
-                                onChange={(e) => setEditValues({ ...editValues, nome: e.target.value })}
-                                placeholder="Nome do serviço"
-                              />
-                            </div>
-                            <div className="flex gap-3">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground font-body">Preço (R$)</label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={editValues.preco ?? ""}
-                                  onChange={(e) => setEditValues({ ...editValues, preco: Number(e.target.value) })}
-                                />
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <label className="text-xs text-muted-foreground font-body">Duração (min)</label>
-                                <Input
-                                  type="number"
-                                  value={editValues.duracao_minutos ?? ""}
-                                  onChange={(e) => setEditValues({ ...editValues, duracao_minutos: Number(e.target.value) })}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => saveEdit(s.id)} disabled={updateMutation.isPending} className="flex-1">
-                                <Save className="h-4 w-4 mr-1" /> Salvar
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
-                            <div className="font-body text-sm text-muted-foreground">
-                              <span className="text-primary font-semibold">R$ {Number(s.preco).toFixed(2).replace(".", ",")}</span>
-                              {" · "}
-                              {s.duracao_minutos} min
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Excluir serviço</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Tem certeza que deseja excluir o serviço <strong>{s.nome}</strong>? Esta ação não pode ser desfeita.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteMutation.mutate(s.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Excluir
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Draggable>
-                );
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
+        <div className="space-y-12">
+          <RenderGrupamentoServicos titulo="✂️ Serviço Corte / Barba" tipoId="corte_barba" lista={listaCorteBarba} />
+          <RenderGrupamentoServicos titulo="✨ Serviços Extras" tipoId="extra" lista={listaExtras} />
+        </div>
       </DragDropContext>
     </div>
   );
