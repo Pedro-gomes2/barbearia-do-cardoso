@@ -15,7 +15,7 @@ export default function Produtos() {
         .from("produtos")
         .select("*")
         .eq("ativo", true)
-        .order("nome");
+        .order("ordem", { ascending: true });
       return (data || []) as Produto[];
     },
   });

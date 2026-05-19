@@ -1,0 +1,2 @@
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS ordem INTEGER DEFAULT 0;
+UPDATE produtos SET ordem = 0 WHERE ordem IS NULL;

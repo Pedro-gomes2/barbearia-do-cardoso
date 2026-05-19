@@ -6,4 +6,5 @@ export interface Produto {
   imagem_url: string | null;
   ativo: boolean;
   criado_em: string;
+  ordem: number;
 }

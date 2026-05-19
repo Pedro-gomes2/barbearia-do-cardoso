@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Wrench, Clock, ShoppingBag, Wallet, Moon, Sun } from "lucide-react";
+import { BarChart3, CalendarDays, Ban, Settings, LogOut, Scissors, Wrench, Clock, ShoppingBag, Wallet, Moon, Sun, Users } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -27,6 +27,7 @@ const items = [
   { title: "Financeiro", url: "/admin/financeiro", icon: Wallet },
   { title: "Despesas", url: "/admin/despesas", icon: Wallet },
   { title: "Portfólio", url: "/admin/portfolio", icon: Scissors },
+  { title: "Clientes", url: "/admin/clientes", icon: Users },
   { title: "Configurações", url: "/admin/configuracoes", icon: Settings },
   { title: "Ver Site", url: "/", icon: Scissors },
 ];

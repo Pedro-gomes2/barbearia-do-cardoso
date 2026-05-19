@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Scissors, Sparkles, Clock, CalendarCheck, Tag, MapPin, Phone, Star, Quote, Users, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-barbershop.jpg";
@@ -132,6 +132,7 @@ export default function Index() {
 
         {/* Services & Prices (Dividido por Categorias) */}
         {servicos.length > 0 && (
+          <>
           <div className="space-y-20 py-12 relative">
             
             {/* Cabeçalho do Bloco */}
@@ -206,6 +207,13 @@ export default function Index() {
             )}
 
           </div>
+
+          <div className="flex justify-center pt-4">
+            <Button asChild size="lg" className="py-6 px-12 text-lg font-heading tracking-[0.2em]">
+              <Link to="/agendamento">AGENDAR AGORA</Link>
+            </Button>
+          </div>
+          </>
         )}
 
         {/* Testimonials */}
@@ -237,7 +245,7 @@ export default function Index() {
         <div className="pt-20 border-t border-border flex flex-col md:flex-row justify-between items-center gap-12 text-center md:text-left">
           <div className="space-y-4">
             <h1 className="text-5xl tracking-widest font-heading">BARBEARIA <span className="text-primary">Cardoso</span></h1>
-            <p className="text-muted-foreground max-w-xs font-light">Elegância e tradição no coração da Trindade. Agende seu momentoo.</p>
+            <p className="text-muted-foreground max-w-xs font-light">Elegância e tradição no coração da Trindade. Agende seu horario.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
