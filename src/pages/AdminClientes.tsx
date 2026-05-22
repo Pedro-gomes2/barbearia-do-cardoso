@@ -60,6 +60,11 @@ export default function AdminClientes() {
         })
       );
 
+      // Ordena alfabeticamente por nome (case/acentos-insensível)
+      clientesComTotal.sort((a, b) =>
+        a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })
+      );
+
       return clientesComTotal;
     },
   });

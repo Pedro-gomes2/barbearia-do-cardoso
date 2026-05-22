@@ -5,10 +5,32 @@ import { Clock, CheckCircle2, XCircle, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function AdminHorarios() {
   const [data, setData] = useState(format(new Date(), "yyyy-MM-dd"));
+
+  // Clientes management / encaixe
+  const [openClientesDialog, setOpenClientesDialog] = useState(false);
+  const [openEncaixeDialog, setOpenEncaixeDialog] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState<any | null>(null);
+  const [formCliente, setFormCliente] = useState({ nome: "", telefone: "" });
+  const [selectedSlot, setSelectedSlot] = useState<any | null>(null);
+  const [openReplaceDialog, setOpenReplaceDialog] = useState(false);
+  const [openRemoveDialog, setOpenRemoveDialog] = useState(false);
+  const [selectedAgendamentoId, setSelectedAgendamentoId] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
 
   const dayOfWeek = new Date(data + "T12:00:00").getDay();
 
@@ -38,6 +60,7 @@ export default function AdminHorarios() {
       );
       const bloqueadosMap = Object.fromEntries(
         (bloqueados || []).map((b: any) => [b.horario, b.motivo || "Bloqueado"])
+
       );
 
       return (customSlots || []).map((s) => {
@@ -46,6 +69,104 @@ export default function AdminHorarios() {
         if (bloqueadosMap[h]) return { horario: h, status: "bloqueado", info: bloqueadosMap[h] };
         return { horario: h, status: "livre", info: "" };
       });
+    },
+  });
+
+  // Clientes list (re-uses same cache key as AdminClientes)
+  const { data: clientes = [] } = useQuery({
+    queryKey: ["admin-clientes"],
+    queryFn: async () => {
+      const { data: usuarios } = await supabase
+        .from("usuarios")
+        .select("id, nome, telefone, criado_em")
+        .eq("tipo", "cliente")
+        .order("nome", { ascending: true });
+
+      if (!usuarios) return [];
+
+      usuarios.sort((a: any, b: any) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+      return usuarios;
+    },
+  });
+
+  const createCliente = useMutation({
+    mutationFn: async (data: { nome: string; telefone: string }) => {
+      const { error } = await supabase.from("usuarios").insert({ ...data, tipo: "cliente" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-clientes"] });
+      setFormCliente({ nome: "", telefone: "" });
+      toast({ title: "Cliente adicionado", description: "Cliente adicionado com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Erro ao adicionar cliente", variant: "destructive" });
+    },
+  });
+
+  const updateCliente = useMutation({
+    mutationFn: async (data: { id: string; nome: string; telefone: string }) => {
+      const { error } = await supabase.from("usuarios").update({ nome: data.nome, telefone: data.telefone }).eq("id", data.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-clientes"] });
+      setSelectedCliente(null);
+      setFormCliente({ nome: "", telefone: "" });
+      toast({ title: "Cliente atualizado", description: "Dados do cliente atualizados" });
+    },
+  });
+
+  const deleteCliente = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("usuarios").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-clientes"] });
+      toast({ title: "Cliente deletado", description: "Cliente removido com sucesso" });
+    },
+  });
+
+  const encaixeMutation = useMutation({
+    mutationFn: async (payload: { cliente_id: string; data: string; horario: string }) => {
+      const { error } = await supabase.from("agendamentos").insert({ cliente_id: payload.cliente_id, data: payload.data, horario: payload.horario, status: "ativo" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
+      toast({ title: "Agendamento criado", description: "Encaixe criado com sucesso" });
+      setOpenEncaixeDialog(false);
+      setSelectedSlot(null);
+    },
+  });
+
+  const removeAgendamento = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("agendamentos").update({ status: "cancelado" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
+      toast({ title: "Agendamento removido", description: "Cliente removido do horário" });
+      setOpenRemoveDialog(false);
+      setSelectedAgendamentoId(null);
+      setSelectedSlot(null);
+    },
+  });
+
+  const replaceAgendamento = useMutation({
+    mutationFn: async (payload: { agendamentoId: string; clienteId: string }) => {
+      const { error } = await supabase.from("agendamentos").update({ cliente_id: payload.clienteId }).eq("id", payload.agendamentoId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
+      toast({ title: "Substituição realizada", description: "Cliente substituído com sucesso" });
+      setOpenReplaceDialog(false);
+      setSelectedAgendamentoId(null);
+      setSelectedSlot(null);
+      setSelectedCliente(null);
     },
   });
 
@@ -70,6 +191,11 @@ export default function AdminHorarios() {
         </Label>
         <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
         <p className="text-xs text-muted-foreground font-body capitalize">{dataDisplay}</p>
+        <div className="pt-2">
+          <Button size="sm" onClick={() => setOpenClientesDialog(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Gerenciar Clientes
+          </Button>
+        </div>
       </div>
 
       {/* Resumo */}
@@ -89,6 +215,170 @@ export default function AdminHorarios() {
           </div>
         </div>
       )}
+
+      {/* Dialog: Gerenciar Clientes */}
+      <Dialog open={openClientesDialog} onOpenChange={setOpenClientesDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Clientes</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {clientes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado.</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-auto">
+                  {clientes.map((c: any) => (
+                    <div key={c.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-medium">{c.nome}</p>
+                        <p className="text-xs text-muted-foreground">{c.telefone}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => { setSelectedCliente(c); setFormCliente({ nome: c.nome, telefone: c.telefone }); }}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => deleteCliente.mutate(c.id)} className="text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <Label>Adicionar / Editar Cliente</Label>
+              <Input placeholder="Nome" value={formCliente.nome} onChange={(e) => setFormCliente({ ...formCliente, nome: e.target.value })} />
+              <Input placeholder="Telefone" value={formCliente.telefone} onChange={(e) => setFormCliente({ ...formCliente, telefone: e.target.value })} />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setOpenClientesDialog(false); setSelectedCliente(null); setFormCliente({ nome: "", telefone: "" }); }}>
+                  Fechar
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!formCliente.nome || !formCliente.telefone) return toast({ title: "Aviso", description: "Preencha todos os campos", variant: "destructive" });
+                    if (selectedCliente) {
+                      updateCliente.mutate({ id: selectedCliente.id, nome: formCliente.nome, telefone: formCliente.telefone });
+                    } else {
+                      createCliente.mutate(formCliente);
+                    }
+                  }}
+                  disabled={createCliente.isLoading || updateCliente.isLoading}
+                >
+                  {selectedCliente ? "Atualizar" : "Adicionar"}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Encaixe */}
+      <Dialog open={openEncaixeDialog} onOpenChange={setOpenEncaixeDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Encaixe de Horário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">Horário: <strong>{selectedSlot?.horario?.slice?.(0,5)}</strong></p>
+            <div className="space-y-2">
+              <Label>Escolha o cliente</Label>
+              <div className="max-h-40 overflow-auto space-y-1">
+                {clientes.map((c: any) => (
+                  <div key={c.id} className={`p-2 rounded-md border flex items-center justify-between ${selectedCliente?.id === c.id ? 'bg-primary/10' : ''}`}>
+                    <div>
+                      <p className="font-medium">{c.nome}</p>
+                      <p className="text-xs text-muted-foreground">{c.telefone}</p>
+                    </div>
+                    <Button size="sm" onClick={() => setSelectedCliente(c)}>
+                      Selecionar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setOpenEncaixeDialog(false); setSelectedCliente(null); setSelectedSlot(null); }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (!selectedCliente || !selectedSlot) return toast({ title: "Aviso", description: "Selecione um cliente", variant: "destructive" });
+              encaixeMutation.mutate({ cliente_id: selectedCliente.id, data, horario: selectedSlot.horario });
+            }} disabled={encaixeMutation.isLoading}>
+              Confirmar Encaixe
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Remover Cliente (confirm) */}
+      <Dialog open={openRemoveDialog} onOpenChange={setOpenRemoveDialog}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Remover Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Tem certeza que deseja remover o cliente deste horário?</p>
+            <p className="text-sm text-muted-foreground">{selectedSlot?.horario?.slice?.(0,5)} — {selectedSlot?.info}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setOpenRemoveDialog(false); setSelectedAgendamentoId(null); setSelectedSlot(null); }}>
+              Cancelar
+            </Button>
+            <Button className="bg-destructive text-destructive-foreground" onClick={() => {
+              if (!selectedAgendamentoId) return;
+              removeAgendamento.mutate(selectedAgendamentoId);
+            }} disabled={removeAgendamento.isLoading}>
+              Remover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Substituir Cliente */}
+      <Dialog open={openReplaceDialog} onOpenChange={setOpenReplaceDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Substituir Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">Horário: <strong>{selectedSlot?.horario?.slice?.(0,5)}</strong></p>
+            <div className="space-y-2">
+              <Label>Escolha o cliente substituto</Label>
+              <div className="max-h-40 overflow-auto space-y-1">
+                {clientes.map((c: any) => (
+                  <div key={c.id} className={`p-2 rounded-md border flex items-center justify-between ${selectedCliente?.id === c.id ? 'bg-primary/10' : ''}`}>
+                    <div>
+                      <p className="font-medium">{c.nome}</p>
+                      <p className="text-xs text-muted-foreground">{c.telefone}</p>
+                    </div>
+                    <Button size="sm" onClick={() => setSelectedCliente(c)}>
+                      Selecionar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setOpenReplaceDialog(false); setSelectedCliente(null); setSelectedAgendamentoId(null); setSelectedSlot(null); }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (!selectedAgendamentoId || !selectedCliente?.id) return toast({ title: 'Aviso', description: 'Selecione um cliente', variant: 'destructive' });
+              replaceAgendamento.mutate({ agendamentoId: selectedAgendamentoId, clienteId: selectedCliente.id });
+            }} disabled={replaceAgendamento.isLoading}>
+              Confirmar Substituição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Lista de horários */}
       {isLoading ? (
@@ -131,8 +421,40 @@ export default function AdminHorarios() {
                 }`}>
                   {s.status === "livre" ? "VAGO" : s.status === "ocupado" ? "OCUPADO" : "BLOQUEADO"}
                 </span>
+                {s.status === "livre" && (
+                  <div className="mt-2 flex justify-end">
+                    <Button size="sm" onClick={() => { setSelectedSlot(s); setOpenEncaixeDialog(true); }}>
+                      Encaixe
+                    </Button>
+                  </div>
+                )}
                 {s.info && (
                   <p className="font-body text-xs text-muted-foreground mt-0.5">{s.info}</p>
+                )}
+                {s.status === "ocupado" && (
+                  <div className="mt-2 flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      // fetch agendamento id
+                      const { data: ag, error } = await supabase.from('agendamentos').select('id, cliente_id').eq('data', data).eq('horario', s.horario).eq('status', 'ativo').maybeSingle();
+                      if (error || !ag) return toast({ title: 'Erro', description: 'Não foi possível localizar o agendamento', variant: 'destructive' });
+                      setSelectedAgendamentoId(ag.id);
+                      setSelectedCliente({ id: ag.cliente_id });
+                      setSelectedSlot(s);
+                      setOpenRemoveDialog(true);
+                    }}>
+                      Remover
+                    </Button>
+                    <Button size="sm" onClick={async () => {
+                      const { data: ag, error } = await supabase.from('agendamentos').select('id, cliente_id').eq('data', data).eq('horario', s.horario).eq('status', 'ativo').maybeSingle();
+                      if (error || !ag) return toast({ title: 'Erro', description: 'Não foi possível localizar o agendamento', variant: 'destructive' });
+                      setSelectedAgendamentoId(ag.id);
+                      setSelectedCliente({ id: ag.cliente_id });
+                      setSelectedSlot(s);
+                      setOpenReplaceDialog(true);
+                    }}>
+                      Substituir
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
