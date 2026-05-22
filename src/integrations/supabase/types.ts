@@ -156,6 +156,7 @@ export type Database = {
         Row: {
           agenda_abertura_fim: string | null
           agenda_abertura_inicio: string | null
+          agenda_aberta_manual: boolean
           atualizado_em: string
           data_agenda_aberta: string | null
           id: string
@@ -167,6 +168,7 @@ export type Database = {
         Insert: {
           agenda_abertura_fim?: string | null
           agenda_abertura_inicio?: string | null
+          agenda_aberta_manual?: boolean
           atualizado_em?: string
           data_agenda_aberta?: string | null
           id?: string
@@ -178,6 +180,7 @@ export type Database = {
         Update: {
           agenda_abertura_fim?: string | null
           agenda_abertura_inicio?: string | null
+          agenda_aberta_manual?: boolean
           atualizado_em?: string
           data_agenda_aberta?: string | null
           id?: string

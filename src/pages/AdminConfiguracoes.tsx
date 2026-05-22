@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Save, Settings, CalendarIcon, Lock, Unlock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parse, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -32,6 +33,7 @@ export default function AdminConfiguracoes() {
   const [fim, setFim] = useState("");
   const [id, setId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [agendaManual, setAgendaManual] = useState(false);
 
   const { data: cfg, refetch } = useQuery({
     queryKey: ["admin-cfg-app"],
@@ -47,8 +49,11 @@ export default function AdminConfiguracoes() {
       setWhats(cfg.whatsapp_admin || "");
       setInicio(cfg.agenda_abertura_inicio || "");
       setFim(cfg.agenda_abertura_fim || "");
+      setAgendaManual(!!cfg.agenda_aberta_manual);
     }
   }, [cfg]);
+
+  const queryClient = useQueryClient();
 
   const handleSave = async () => {
     if (inicio && fim && fim < inicio) {
@@ -61,6 +66,7 @@ export default function AdminConfiguracoes() {
         whatsapp_admin: whats.replace(/\D/g, ""),
         agenda_abertura_inicio: inicio || null,
         agenda_abertura_fim: fim || null,
+        agenda_aberta_manual: agendaManual,
       };
       if (id) {
         const { error } = await supabase.from("configuracoes_app").update(payload).eq("id", id);
@@ -71,6 +77,8 @@ export default function AdminConfiguracoes() {
       }
       toast({ title: "Configurações salvas!" });
       refetch();
+      queryClient.invalidateQueries({ queryKey: ["agenda-periodo"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-cfg-app"] });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
@@ -78,7 +86,37 @@ export default function AdminConfiguracoes() {
     }
   };
 
-  const status = agendaStatus(inicio, fim);
+  const handleClosePeriodo = async () => {
+    const payload = {
+      whatsapp_admin: whats.replace(/\D/g, ""),
+      agenda_abertura_inicio: null,
+      agenda_abertura_fim: null,
+      agenda_aberta_manual: false,
+    };
+    setLoading(true);
+    try {
+      if (id) {
+        const { error } = await supabase.from("configuracoes_app").update(payload).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("configuracoes_app").insert(payload);
+        if (error) throw error;
+      }
+      setInicio("");
+      setFim("");
+      setAgendaManual(false);
+      toast({ title: "Período fechado", description: "A agenda foi fechada com sucesso." });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["agenda-periodo"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-cfg-app"] });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const status = agendaManual ? "aberta" : agendaStatus(inicio, fim);
 
   return (
     <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
@@ -112,6 +150,13 @@ export default function AdminConfiguracoes() {
       </div>
 
       <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-xs">Agenda (abrir/fechar manualmente)</Label>
+            <p className="text-xs text-muted-foreground">When ON the agenda stays open regardless of the period</p>
+          </div>
+          <Switch checked={agendaManual} onCheckedChange={(v) => setAgendaManual(!!v)} />
+        </div>
         {/* Período da agenda */}
         <div className="space-y-3">
           <Label className="flex items-center gap-2 font-semibold">
@@ -139,9 +184,14 @@ export default function AdminConfiguracoes() {
           <Input value={whats} onChange={(e) => setWhats(e.target.value)} maxLength={15} />
         </div>
 
-        <Button onClick={handleSave} disabled={loading} className="w-full py-5 font-heading tracking-widest" size="lg">
-          <Save className="mr-2 h-4 w-4" /> {loading ? "SALVANDO..." : "SALVAR"}
-        </Button>
+        <div className="flex flex-col gap-3 md:flex-row">
+          <Button onClick={handleSave} disabled={loading} className="flex-1 py-5 font-heading tracking-widest" size="lg">
+            <Save className="mr-2 h-4 w-4" /> {loading ? "SALVANDO..." : "SALVAR"}
+          </Button>
+          <Button variant="outline" onClick={handleClosePeriodo} className="flex-1 py-5 font-heading tracking-widest" size="lg">
+            Fechar período de agendamento
+          </Button>
+        </div>
       </div>
     </div>
   );

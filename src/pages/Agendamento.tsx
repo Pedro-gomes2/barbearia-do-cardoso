@@ -33,14 +33,14 @@ export default function Agendamento() {
     queryFn: async () => {
       const { data } = await supabase
         .from("configuracoes_app")
-        .select("agenda_abertura_inicio, agenda_abertura_fim, whatsapp_admin")
+        .select("agenda_abertura_inicio, agenda_abertura_fim, whatsapp_admin, agenda_aberta_manual")
         .limit(1)
         .maybeSingle();
       return data;
     },
   });
 
-  const agendaAberta = isAgendaAberta(
+  const agendaAberta = cfg?.agenda_aberta_manual || isAgendaAberta(
     cfg?.agenda_abertura_inicio ?? null,
     cfg?.agenda_abertura_fim ?? null,
   );
