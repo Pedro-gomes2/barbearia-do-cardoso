@@ -201,9 +201,8 @@ export default function AdminHorarios() {
   });
 
   const replaceAgendamento = useMutation({
-    mutationFn: async (payload: { agendamentoId: string; clienteId: string }) => {
-      const { error } = await supabase.from("agendamentos").update({ cliente_id: payload.clienteId }).eq("id", payload.agendamentoId);
-      if (error) throw error;
+    mutationFn: async (payload: { agendamentoId: string; clienteId: string; servicoIds: string[] }) => {
+      await replaceAgendamentoServicos(payload.agendamentoId, payload.clienteId, payload.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
@@ -212,6 +211,10 @@ export default function AdminHorarios() {
       setSelectedAgendamentoId(null);
       setSelectedSlot(null);
       setSelectedCliente(null);
+      setSelectedServicoIds([]);
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err?.message ?? "Erro ao substituir cliente", variant: "destructive" });
     },
   });
 
@@ -430,14 +433,34 @@ export default function AdminHorarios() {
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Serviços</Label>
+              <div className="max-h-32 overflow-auto space-y-1 border rounded-md p-2">
+                {servicosAtivos.map((sv: any) => (
+                  <label key={sv.id} className="flex items-center gap-2 p-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedServicoIds.includes(sv.id)}
+                      onChange={(e) => {
+                        setSelectedServicoIds((prev) =>
+                          e.target.checked ? [...prev, sv.id] : prev.filter((id) => id !== sv.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{sv.nome}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setOpenReplaceDialog(false); setSelectedCliente(null); setSelectedAgendamentoId(null); setSelectedSlot(null); }}>
+            <Button variant="outline" onClick={() => { setOpenReplaceDialog(false); setSelectedCliente(null); setSelectedAgendamentoId(null); setSelectedSlot(null); setSelectedServicoIds([]); }}>
               Cancelar
             </Button>
             <Button onClick={() => {
               if (!selectedAgendamentoId || !selectedCliente?.id) return toast({ title: 'Aviso', description: 'Selecione um cliente', variant: 'destructive' });
-              replaceAgendamento.mutate({ agendamentoId: selectedAgendamentoId, clienteId: selectedCliente.id });
+              if (selectedServicoIds.length === 0) return toast({ title: "Aviso", description: "Selecione ao menos um serviço", variant: "destructive" });
+              replaceAgendamento.mutate({ agendamentoId: selectedAgendamentoId, clienteId: selectedCliente.id, servicoIds: selectedServicoIds });
             }} disabled={replaceAgendamento.isLoading}>
               Confirmar Substituição
             </Button>
