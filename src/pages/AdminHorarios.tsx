@@ -46,28 +46,45 @@ export default function AdminHorarios() {
           .order("horario"),
         supabase
           .from("agendamentos")
-          .select("horario, usuarios(nome)")
+          .select("id, horario, status, usuarios(nome), agendamento_servicos(servicos(nome))")
           .eq("data", data)
-          .eq("status", "ativo"),
+          .in("status", ["pendente", "ativo"]),
         supabase
           .from("bloqueios")
           .select("horario, motivo")
           .eq("data", data),
       ]);
 
-      const agendadosMap = Object.fromEntries(
-        (agendados || []).map((a: any) => [a.horario, a.usuarios?.nome || "Cliente"])
-      );
+      const agendadosMap: Record<string, { nome: string; servicos: string[]; status: "pendente" | "ativo"; id: string }> = {};
+      for (const a of (agendados || []) as any[]) {
+        agendadosMap[a.horario] = {
+          id: a.id,
+          nome: a.usuarios?.nome ?? "Cliente",
+          servicos: (a.agendamento_servicos ?? [])
+            .map((j: any) => j.servicos?.nome)
+            .filter((n: any): n is string => !!n),
+          status: a.status,
+        };
+      }
       const bloqueadosMap = Object.fromEntries(
         (bloqueados || []).map((b: any) => [b.horario, b.motivo || "Bloqueado"])
-
       );
 
       return (customSlots || []).map((s) => {
         const h = s.horario;
-        if (agendadosMap[h]) return { horario: h, status: "ocupado", info: agendadosMap[h] };
-        if (bloqueadosMap[h]) return { horario: h, status: "bloqueado", info: bloqueadosMap[h] };
-        return { horario: h, status: "livre", info: "" };
+        if (agendadosMap[h]) {
+          const a = agendadosMap[h];
+          return {
+            horario: h,
+            status: "ocupado" as const,
+            info: a.nome,
+            servicos: a.servicos,
+            agendamentoStatus: a.status,
+            agendamentoId: a.id,
+          };
+        }
+        if (bloqueadosMap[h]) return { horario: h, status: "bloqueado" as const, info: bloqueadosMap[h], servicos: [], agendamentoStatus: null, agendamentoId: null };
+        return { horario: h, status: "livre" as const, info: "", servicos: [], agendamentoStatus: null, agendamentoId: null };
       });
     },
   });
