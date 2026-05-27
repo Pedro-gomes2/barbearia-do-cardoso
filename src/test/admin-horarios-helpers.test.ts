@@ -11,6 +11,11 @@ vi.mock("@/integrations/supabase/client", () => {
     insertedJunctionRows: [] as any[],
     deletedJunctionAgendamentoIds: [] as string[],
     updatedAgendamentos: [] as any[],
+    favoritosByCliente: {} as Record<string, { servico_id: string }[]>,
+    favoritosInsertError: null,
+    favoritosDeleteError: null,
+    insertedFavoritosRows: [] as any[],
+    deletedFavoritosClienteIds: [] as string[],
   };
   const client = {
     from: (table: string) => {
@@ -53,6 +58,27 @@ vi.mock("@/integrations/supabase/client", () => {
           }),
         };
       }
+      if (table === "cliente_servicos_favoritos") {
+        return {
+          select: (_cols: string) => ({
+            eq: async (_col: string, clienteId: string) => ({
+              data: state.favoritosByCliente[clienteId] ?? [],
+              error: null,
+            }),
+          }),
+          insert: async (rows: any[]) => {
+            if (state.favoritosInsertError) return { error: state.favoritosInsertError };
+            state.insertedFavoritosRows.push(...rows);
+            return { error: null };
+          },
+          delete: () => ({
+            eq: (_col: string, clienteId: string) => {
+              state.deletedFavoritosClienteIds.push(clienteId);
+              return Promise.resolve({ error: state.favoritosDeleteError });
+            },
+          }),
+        };
+      }
       return {};
     },
     __state: state,
@@ -77,6 +103,11 @@ beforeEach(() => {
   s.insertedJunctionRows = [];
   s.deletedJunctionAgendamentoIds = [];
   s.updatedAgendamentos = [];
+  s.favoritosByCliente = {};
+  s.favoritosInsertError = null;
+  s.favoritosDeleteError = null;
+  s.insertedFavoritosRows = [];
+  s.deletedFavoritosClienteIds = [];
 });
 
 describe("mapAgendamentoToSlot", () => {
@@ -170,5 +201,39 @@ describe("replaceAgendamentoServicos", () => {
     await expect(
       replaceAgendamentoServicos("ag-x", "cli-x", ["s1"])
     ).rejects.toMatchObject({ message: "update falhou" });
+  });
+});
+
+import { getFavoritosCliente, saveFavoritosCliente } from "@/lib/admin-horarios-helpers";
+
+describe("getFavoritosCliente", () => {
+  it("retorna lista de servico_ids para o cliente", async () => {
+    getState().favoritosByCliente["cli-1"] = [{ servico_id: "s1" }, { servico_id: "s2" }];
+    const result = await getFavoritosCliente("cli-1");
+    expect(result).toEqual(["s1", "s2"]);
+  });
+
+  it("retorna vazio quando cliente nao tem favoritos", async () => {
+    const result = await getFavoritosCliente("cli-sem-favs");
+    expect(result).toEqual([]);
+  });
+});
+
+describe("saveFavoritosCliente", () => {
+  it("delete antigos e insere novos", async () => {
+    await saveFavoritosCliente("cli-1", ["s1", "s2"]);
+    const s = getState();
+    expect(s.deletedFavoritosClienteIds).toEqual(["cli-1"]);
+    expect(s.insertedFavoritosRows).toEqual([
+      { cliente_id: "cli-1", servico_id: "s1" },
+      { cliente_id: "cli-1", servico_id: "s2" },
+    ]);
+  });
+
+  it("array vazio so deleta, nao insere", async () => {
+    await saveFavoritosCliente("cli-1", []);
+    const s = getState();
+    expect(s.deletedFavoritosClienteIds).toEqual(["cli-1"]);
+    expect(s.insertedFavoritosRows).toEqual([]);
   });
 });

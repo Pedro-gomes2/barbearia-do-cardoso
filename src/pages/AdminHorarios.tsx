@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2 } from "lucide-react";
-import { createEncaixe, replaceAgendamentoServicos } from "@/lib/admin-horarios-helpers";
+import { createEncaixe, replaceAgendamentoServicos, getFavoritosCliente, saveFavoritosCliente } from "@/lib/admin-horarios-helpers";
 import { SlotIndisponivelError } from "@/lib/supabase-helpers";
 
 export default function AdminHorarios() {
@@ -121,14 +121,22 @@ export default function AdminHorarios() {
     },
   });
 
+  const [formFavoritos, setFormFavoritos] = useState<string[]>([]);
+
   const createCliente = useMutation({
-    mutationFn: async (data: { nome: string; telefone: string }) => {
-      const { error } = await supabase.from("usuarios").insert({ ...data, tipo: "cliente" });
+    mutationFn: async (data: { nome: string; telefone: string; servicoIds: string[] }) => {
+      const { data: novo, error } = await supabase
+        .from("usuarios")
+        .insert({ nome: data.nome, telefone: data.telefone, tipo: "cliente" })
+        .select("id")
+        .single();
       if (error) throw error;
+      await saveFavoritosCliente(novo.id, data.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-clientes"] });
       setFormCliente({ nome: "", telefone: "" });
+      setFormFavoritos([]);
       toast({ title: "Cliente adicionado", description: "Cliente adicionado com sucesso" });
     },
     onError: () => {
@@ -137,14 +145,16 @@ export default function AdminHorarios() {
   });
 
   const updateCliente = useMutation({
-    mutationFn: async (data: { id: string; nome: string; telefone: string }) => {
+    mutationFn: async (data: { id: string; nome: string; telefone: string; servicoIds: string[] }) => {
       const { error } = await supabase.from("usuarios").update({ nome: data.nome, telefone: data.telefone }).eq("id", data.id);
       if (error) throw error;
+      await saveFavoritosCliente(data.id, data.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-clientes"] });
       setSelectedCliente(null);
       setFormCliente({ nome: "", telefone: "" });
+      setFormFavoritos([]);
       toast({ title: "Cliente atualizado", description: "Dados do cliente atualizados" });
     },
   });
@@ -284,7 +294,11 @@ export default function AdminHorarios() {
                         <p className="text-xs text-muted-foreground">{c.telefone}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => { setSelectedCliente(c); setFormCliente({ nome: c.nome, telefone: c.telefone }); }}>
+                        <Button size="sm" variant="ghost" onClick={async () => {
+                          setSelectedCliente(c);
+                          setFormCliente({ nome: c.nome, telefone: c.telefone });
+                          try { setFormFavoritos(await getFavoritosCliente(c.id)); } catch { setFormFavoritos([]); }
+                        }}>
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => deleteCliente.mutate(c.id)} className="text-destructive">
@@ -301,17 +315,38 @@ export default function AdminHorarios() {
               <Label>Adicionar / Editar Cliente</Label>
               <Input placeholder="Nome" value={formCliente.nome} onChange={(e) => setFormCliente({ ...formCliente, nome: e.target.value })} />
               <Input placeholder="Telefone" value={formCliente.telefone} onChange={(e) => setFormCliente({ ...formCliente, telefone: e.target.value })} />
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Serviços favoritos</Label>
+                <div className="max-h-32 overflow-auto space-y-1 border rounded-md p-2">
+                  {servicosAtivos.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhum serviço ativo.</p>
+                  ) : servicosAtivos.map((sv: any) => (
+                    <label key={sv.id} className="flex items-center gap-2 p-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formFavoritos.includes(sv.id)}
+                        onChange={(e) => {
+                          setFormFavoritos((prev) =>
+                            e.target.checked ? [...prev, sv.id] : prev.filter((id) => id !== sv.id)
+                          );
+                        }}
+                      />
+                      <span className="text-sm">{sv.nome}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => { setOpenClientesDialog(false); setSelectedCliente(null); setFormCliente({ nome: "", telefone: "" }); }}>
+                <Button variant="outline" onClick={() => { setOpenClientesDialog(false); setSelectedCliente(null); setFormCliente({ nome: "", telefone: "" }); setFormFavoritos([]); }}>
                   Fechar
                 </Button>
                 <Button
                   onClick={() => {
                     if (!formCliente.nome || !formCliente.telefone) return toast({ title: "Aviso", description: "Preencha todos os campos", variant: "destructive" });
                     if (selectedCliente) {
-                      updateCliente.mutate({ id: selectedCliente.id, nome: formCliente.nome, telefone: formCliente.telefone });
+                      updateCliente.mutate({ id: selectedCliente.id, nome: formCliente.nome, telefone: formCliente.telefone, servicoIds: formFavoritos });
                     } else {
-                      createCliente.mutate(formCliente);
+                      createCliente.mutate({ ...formCliente, servicoIds: formFavoritos });
                     }
                   }}
                   disabled={createCliente.isLoading || updateCliente.isLoading}
@@ -343,7 +378,10 @@ export default function AdminHorarios() {
                       <p className="font-medium">{c.nome}</p>
                       <p className="text-xs text-muted-foreground">{c.telefone}</p>
                     </div>
-                    <Button size="sm" onClick={() => setSelectedCliente(c)}>
+                    <Button size="sm" onClick={async () => {
+                      setSelectedCliente(c);
+                      try { setSelectedServicoIds(await getFavoritosCliente(c.id)); } catch { /* mantém seleção atual */ }
+                    }}>
                       Selecionar
                     </Button>
                   </div>
@@ -426,7 +464,10 @@ export default function AdminHorarios() {
                       <p className="font-medium">{c.nome}</p>
                       <p className="text-xs text-muted-foreground">{c.telefone}</p>
                     </div>
-                    <Button size="sm" onClick={() => setSelectedCliente(c)}>
+                    <Button size="sm" onClick={async () => {
+                      setSelectedCliente(c);
+                      try { setSelectedServicoIds(await getFavoritosCliente(c.id)); } catch { /* mantém seleção atual */ }
+                    }}>
                       Selecionar
                     </Button>
                   </div>
