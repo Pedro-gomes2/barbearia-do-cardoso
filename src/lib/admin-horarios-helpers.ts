@@ -26,3 +26,42 @@ export function mapAgendamentoToSlot(ag: AgendamentoRow): SlotInfo {
     status: ag.status,
   };
 }
+
+export async function createEncaixe(
+  clienteId: string,
+  data: string,
+  horario: string,
+  servicoIds: string[]
+): Promise<void> {
+  const { data: agendamento, error: insertError } = await supabase
+    .from("agendamentos")
+    .insert({ cliente_id: clienteId, data, horario, status: "ativo" })
+    .select()
+    .single();
+
+  if (insertError) {
+    if (
+      insertError.code === "23505" &&
+      typeof insertError.message === "string" &&
+      insertError.message.includes(SLOT_UNIQUE_INDEX)
+    ) {
+      throw new SlotIndisponivelError();
+    }
+    throw insertError;
+  }
+
+  if (servicoIds.length === 0) return;
+
+  const rows = servicoIds.map((sid) => ({
+    agendamento_id: agendamento.id,
+    servico_id: sid,
+  }));
+  const { error: junctionError } = await supabase
+    .from("agendamento_servicos")
+    .insert(rows);
+
+  if (junctionError) {
+    await supabase.from("agendamentos").delete().eq("id", agendamento.id);
+    throw junctionError;
+  }
+}
