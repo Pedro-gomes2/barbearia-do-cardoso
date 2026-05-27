@@ -1,5 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export const SLOT_UNIQUE_INDEX = "agendamentos_unique_slot_active";
+
+export class SlotIndisponivelError extends Error {
+  constructor() {
+    super("Esse horário acabou de ser reservado por outra pessoa.");
+    this.name = "SlotIndisponivelError";
+  }
+}
+
 export async function getAvailableSlots(date: string) {
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
@@ -75,7 +84,17 @@ export async function createAppointment(
     .select()
     .single();
 
-  if (agError) throw agError;
+  if (agError) {
+    if (
+      agError.code === "23505" &&
+      typeof agError.message === "string" &&
+      agError.message.includes(SLOT_UNIQUE_INDEX)
+    ) {
+      await supabase.from("usuarios").delete().eq("id", usuario.id);
+      throw new SlotIndisponivelError();
+    }
+    throw agError;
+  }
 
   // Insert all services into junction table
   if (servicoIds.length > 0) {
