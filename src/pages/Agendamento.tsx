@@ -47,10 +47,13 @@ export default function Agendamento() {
 
   const dateStr = date ? format(date, "yyyy-MM-dd") : null;
 
+  // Calculate total duration from selected services
+  const totalDuration = servicos.reduce((sum, s) => sum + s.duracao_minutos, 0);
+
   const { data: slots = [], isLoading: slotsLoading } = useQuery({
-    queryKey: ["slots", dateStr],
-    queryFn: () => getAvailableSlots(dateStr!),
-    enabled: !!dateStr && agendaAberta,
+    queryKey: ["slots", dateStr, totalDuration],
+    queryFn: () => getAvailableSlots(dateStr!, totalDuration),
+    enabled: !!dateStr && agendaAberta && totalDuration > 0,
   });
 
   const toggleServico = (s: Servico) => {
@@ -59,6 +62,9 @@ export default function Agendamento() {
         ? prev.filter((x) => x.id !== s.id)
         : [...prev, s]
     );
+    // Reset selected time when services change (duration changes)
+    setSelectedTime(null);
+    setSlotsAberto(false);
   };
 
   const totalPrice = servicos.reduce((sum, s) => sum + s.preco, 0);
@@ -130,9 +136,14 @@ export default function Agendamento() {
                     <span className="font-semibold text-sm uppercase tracking-wide font-body">Escolha os serviços</span>
                   </div>
                   {servicos.length > 0 && (
-                    <span className="text-primary font-heading text-lg">
-                      R$ {totalPrice.toFixed(2).replace(".", ",")}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-primary font-heading text-lg">
+                        R$ {totalPrice.toFixed(2).replace(".", ",")}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground font-body">
+                        <Clock className="h-3 w-3 inline mr-1" />{totalDuration} min
+                      </p>
+                    </div>
                   )}
                 </div>
                 <ServiceSelector selectedIds={servicos.map((s) => s.id)} onToggle={toggleServico} />

@@ -25,8 +25,37 @@ export default function AgendamentoSucesso() {
   const [whatsappEnviado, setWhatsappEnviado] = useState(false);
 
   useEffect(() => {
-    supabase.from("configuracoes_app").select("*").limit(1).maybeSingle().then(({ data }) => setCfg(data));
+    supabase
+      .from("configuracoes_app")
+      .select("*")
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setCfg(data));
   }, []);
+
+  // Prevent navigation away before WhatsApp confirmation
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!whatsappEnviado) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => {
+      window.removeEventListener("beforeunload", handler);
+    };
+  }, [whatsappEnviado]);
+
+  // Countdown timer for WhatsApp confirmation (30 minutes)
+  const [secondsLeft, setSecondsLeft] = useState(30 * 60);
+  useEffect(() => {
+    if (whatsappEnviado) return;
+    const interval = setInterval(() => {
+      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [whatsappEnviado]);
 
   if (!date || !time) {
     navigate("/agendamento");
@@ -124,6 +153,13 @@ export default function AgendamentoSucesso() {
               <strong>Atenção:</strong> Você precisa enviar a mensagem no WhatsApp para confirmar seu agendamento. Sem a confirmação o horário não será garantido.
             </p>
           </div>
+        )}
+        
+        {/* Countdown timer */}
+        {!whatsappEnviado && secondsLeft > 0 && (
+          <p className="text-sm text-muted-foreground mt-2 text-center">
+            Tempo restante para confirmar: {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+          </p>
         )}
 
         {/* Botão WhatsApp — obrigatório */}

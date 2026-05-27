@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, CheckCircle2, XCircle, CalendarDays } from "lucide-react";
@@ -49,7 +49,7 @@ export default function AdminHorarios() {
           .order("horario"),
         supabase
           .from("agendamentos")
-          .select("id, horario, status, usuarios(nome), agendamento_servicos(servicos(nome))")
+          .select("id, horario, status, usuarios(nome), agendamento_servicos(servicos(nome)")
           .eq("data", data)
           .in("status", ["pendente", "ativo"]),
         supabase
@@ -288,13 +288,20 @@ export default function AdminHorarios() {
               ) : (
                 <div className="space-y-2 max-h-64 overflow-auto">
                   {clientes.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between p-2 rounded-md border">
+                    <div key={c.id} className="flex items-center justify-between p-2 rounded-md border cursor-pointer" onClick={async () => {
+                      // Directly open Encaixe with selected client
+                      setSelectedCliente(c);
+                      setFormCliente({ nome: c.nome, telefone: c.telefone });
+                      try { const fav = await getFavoritosCliente(c.id); setFormFavoritos(fav); setSelectedServicoIds(fav); } catch { setFormFavoritos([]); setSelectedServicoIds([]); }
+                      setOpenEncaixeDialog(true);
+                    }}>
                       <div>
                         <p className="font-medium">{c.nome}</p>
                         <p className="text-xs text-muted-foreground">{c.telefone}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={async () => {
+                        <Button size="sm" variant="ghost" onClick={async (e) => {
+                          e.stopPropagation();
                           setSelectedCliente(c);
                           setFormCliente({ nome: c.nome, telefone: c.telefone });
                           try { setFormFavoritos(await getFavoritosCliente(c.id)); } catch { setFormFavoritos([]); }
@@ -316,7 +323,7 @@ export default function AdminHorarios() {
               <Input placeholder="Nome" value={formCliente.nome} onChange={(e) => setFormCliente({ ...formCliente, nome: e.target.value })} />
               <Input placeholder="Telefone" value={formCliente.telefone} onChange={(e) => setFormCliente({ ...formCliente, telefone: e.target.value })} />
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Serviços favoritos</Label>
+                <Label className="text-xs text-muted-foreground">Serviços para Encaixe</Label>
                 <div className="max-h-32 overflow-auto space-y-1 border rounded-md p-2">
                   {servicosAtivos.length === 0 ? (
                     <p className="text-xs text-muted-foreground">Nenhum serviço ativo.</p>
@@ -521,19 +528,8 @@ export default function AdminHorarios() {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {slots.map((s) => (
-            <div
-              key={s.horario}
-              className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
-                s.status === "livre"
-                  ? "bg-green-50 border-green-200"
-                  : s.status === "ocupado" && s.agendamentoStatus === "pendente"
-                  ? "bg-yellow-50 border-yellow-300"
-                  : s.status === "ocupado"
-                  ? "bg-red-50 border-red-200"
-                  : "bg-muted border-border opacity-60"
-              }`}
-            >
+          {slots.filter((s) => s.status !== "bloqueado").map((s) => (
+            <div key={s.horario} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${s.status === "livre" ? "bg-green-50 border-green-200" : s.status === "ocupado" && s.agendamentoStatus === "pendente" ? "bg-yellow-50 border-yellow-300" : s.status === "ocupado" ? "bg-red-50 border-red-200" : "bg-muted border-border opacity-60"}`}>
               <div className="flex items-center gap-3">
                 {s.status === "livre" ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -543,15 +539,8 @@ export default function AdminHorarios() {
                 <span className="font-heading text-xl">{s.horario.slice(0, 5)}</span>
               </div>
               <div className="text-right">
-                <span className={`font-body text-xs px-2 py-0.5 rounded-full ${
-                  s.status === "livre"
-                    ? "bg-green-100 text-green-700"
-                    : s.status === "ocupado" && s.agendamentoStatus === "pendente"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : s.status === "ocupado"
-                    ? "bg-red-100 text-red-700"
-                    : "bg-muted text-muted-foreground"
-                }`}>
+                <span className={`font-body text-xs px-2 py-0.5 rounded-full ${s.status === "livre" ? "bg-green-100 text-green-700" : s.status === "ocupado" && s.agendamentoStatus === "pendente" ? "bg-yellow-100 text-yellow-800" : s.status === "ocupado" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}
+                  >
                   {s.status === "livre"
                     ? "VAGO"
                     : s.status === "ocupado" && s.agendamentoStatus === "pendente"
