@@ -42,3 +42,59 @@ describe("buildWhatsappConfirmUrl", () => {
     expect(url).toBe("https://wa.me/5521995323454?text=x");
   });
 });
+
+import { vi, beforeEach } from "vitest";
+import { createAppointment } from "@/lib/supabase-helpers";
+
+vi.mock("@/integrations/supabase/client", () => {
+  const state: any = { lastAgendamentoInsert: null };
+  const client = {
+    from: (table: string) => {
+      if (table === "usuarios") {
+        return {
+          insert: () => ({
+            select: () => ({ single: async () => ({ data: { id: "u-1" }, error: null }) }),
+          }),
+          delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === "agendamentos") {
+        return {
+          insert: (payload: any) => {
+            state.lastAgendamentoInsert = payload;
+            return {
+              select: () => ({ single: async () => ({ data: { id: "ag-1" }, error: null }) }),
+            };
+          },
+        };
+      }
+      if (table === "agendamento_servicos") {
+        return { insert: async () => ({ error: null }) };
+      }
+      return {};
+    },
+    __state: state,
+  };
+  return { supabase: client };
+});
+
+import { supabase } from "@/integrations/supabase/client";
+const getState = () => (supabase as any).__state;
+
+beforeEach(() => { getState().lastAgendamentoInsert = null; });
+
+describe("createAppointment - status pendente + expira_em", () => {
+  it("insere com status pendente", async () => {
+    await createAppointment("Joao", "21999999999", "2026-06-15", "10:30:00", []);
+    expect(getState().lastAgendamentoInsert.status).toBe("pendente");
+  });
+
+  it("define expira_em ~30 min no futuro", async () => {
+    const before = Date.now();
+    await createAppointment("Joao", "21999999999", "2026-06-15", "10:30:00", []);
+    const after = Date.now();
+    const expiraMs = new Date(getState().lastAgendamentoInsert.expira_em).getTime();
+    expect(expiraMs).toBeGreaterThanOrEqual(before + 30 * 60 * 1000 - 5000);
+    expect(expiraMs).toBeLessThanOrEqual(after + 30 * 60 * 1000 + 5000);
+  });
+});

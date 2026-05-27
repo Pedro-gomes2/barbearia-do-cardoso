@@ -75,6 +75,8 @@ export async function createAppointment(
     data,
     horario,
     telefone_cliente: telefone.replace(/\D/g, ""),
+    status: "pendente",
+    expira_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   };
   if (servicoIds.length > 0) insertData.servico_id = servicoIds[0];
 
