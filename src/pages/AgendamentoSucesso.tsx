@@ -6,6 +6,7 @@ import { CheckCircle, Calendar, Clock, Tag, MessageCircle, AlertCircle, Scissors
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { Servico } from "@/components/ServiceSelector";
+import { buildWhatsappConfirmMessage, buildWhatsappConfirmUrl } from "@/lib/confirmacao-helpers";
 
 const FALLBACK_WHATSAPP = "5521995323454";
 
@@ -38,16 +39,15 @@ export default function AgendamentoSucesso() {
   const totalMinutos = (servicos || []).reduce((sum, s) => sum + s.duracao_minutos, 0);
   const whatsappNumber = cfg?.whatsapp_admin || FALLBACK_WHATSAPP;
 
-  const servicosText = (servicos || []).map((s) => s.nome).join(", ");
-  const messageText =
-    `Olá! Novo agendamento na Barbearia:\n` +
-    `👤 ${nome}\n` +
-    `📅 ${dateDisplay}\n` +
-    `🕐 ${timeDisplay}\n` +
-    (servicosText ? `✂️ ${servicosText}\n` : "") +
-    `Aguardo confirmação!`;
+  const servicosNomes = (servicos || []).map((s) => s.nome);
+  const messageText = buildWhatsappConfirmMessage({
+    nome,
+    data: date,
+    horario: time,
+    servicos: servicosNomes,
+  });
 
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(messageText)}`;
+  const whatsappUrl = buildWhatsappConfirmUrl(whatsappNumber, messageText);
 
   const handleWhatsapp = () => {
     window.open(whatsappUrl, "_blank");
@@ -68,7 +68,14 @@ export default function AgendamentoSucesso() {
           <CheckCircle className="h-16 w-16 text-primary mx-auto" />
           <h2 className="text-4xl">AGENDADO!</h2>
           <p className="text-muted-foreground font-body text-sm">
-            Confirme pelo WhatsApp para garantir seu horário
+            Atendimento ainda <strong>NÃO confirmado</strong>. Envie a mensagem ao barbeiro pelo WhatsApp em até <strong>30 minutos</strong> para garantir seu horário.
+          </p>
+        </div>
+
+        <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex gap-3 items-start">
+          <AlertCircle className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
+          <p className="font-body text-sm text-yellow-900">
+            Seu horário está <strong>pendente</strong> e expira em 30 minutos se não houver confirmação pelo WhatsApp.
           </p>
         </div>
 

@@ -10,9 +10,10 @@ export class SlotIndisponivelError extends Error {
 }
 
 export async function getAvailableSlots(date: string) {
+  await supabase.rpc("expire_pending_agendamentos");
+
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
-  // Check if day is active in general config
   const { data: config } = await supabase
     .from("configuracoes_agenda")
     .select("ativo")
@@ -23,7 +24,6 @@ export async function getAvailableSlots(date: string) {
     return [];
   }
 
-  // Check for custom slots
   const { data: customSlots } = await supabase
     .from("horarios_customizados")
     .select("horario")
@@ -36,18 +36,16 @@ export async function getAvailableSlots(date: string) {
   if (customSlots && customSlots.length > 0) {
     slots = customSlots.map((s) => s.horario);
   } else {
-    // Sem horários manuais cadastrados — dia indisponível
     return [];
   }
 
-  // Filter booked and blocked
   const [{ data: booked }, { data: blocked }] = await Promise.all([
-    supabase.from("agendamentos").select("horario").eq("data", date).eq("status", "ativo"),
+    supabase.from("agendamentos").select("horario").eq("data", date).in("status", ["pendente", "ativo"]),
     supabase.from("bloqueios").select("horario").eq("data", date),
   ]);
 
-  const bookedSet = new Set((booked || []).map((b) => b.horario));
-  const blockedSet = new Set((blocked || []).map((b) => b.horario));
+  const bookedSet = new Set((booked || []).map((b: any) => b.horario));
+  const blockedSet = new Set((blocked || []).map((b: any) => b.horario));
 
   return slots.map((slot) => ({
     time: slot,
@@ -75,6 +73,8 @@ export async function createAppointment(
     data,
     horario,
     telefone_cliente: telefone.replace(/\D/g, ""),
+    status: "pendente",
+    expira_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   };
   if (servicoIds.length > 0) insertData.servico_id = servicoIds[0];
 
