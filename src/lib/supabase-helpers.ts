@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addMinutes, parse, format, isBefore } from "date-fns";
+import { normalizarTelefone } from "@/lib/telefone";
 
 export const SLOT_UNIQUE_INDEX = "agendamentos_unique_slot_active";
 export const SLOT_STEP = 15; // minutes between each slot (minimum service duration)
@@ -150,13 +151,44 @@ export async function createAppointment(
   horario: string,
   servicoIds: string[]
 ) {
-  const { data: usuario, error: userError } = await supabase
-    .from("usuarios")
-    .insert({ nome, telefone, tipo: "cliente" })
-    .select()
-    .single();
+  const telNorm = normalizarTelefone(telefone);
 
-  if (userError) throw userError;
+  let usuario: { id: string } | null = null;
+  let usuarioFoiCriado = false;
+  if (telNorm) {
+    const { data: existente } = await supabase
+      .from("usuarios")
+      .select("id")
+      .eq("telefone_normalizado", telNorm)
+      .eq("tipo", "cliente")
+      .maybeSingle();
+    if (existente) usuario = existente;
+  }
+
+  if (!usuario) {
+    const { data: novo, error: insErr } = await supabase
+      .from("usuarios")
+      .insert({ nome, telefone, tipo: "cliente" })
+      .select("id")
+      .single();
+    if (insErr) {
+      if (insErr.code === "23505" && telNorm) {
+        const { data: retry, error: retryErr } = await supabase
+          .from("usuarios")
+          .select("id")
+          .eq("telefone_normalizado", telNorm)
+          .eq("tipo", "cliente")
+          .single();
+        if (retryErr) throw retryErr;
+        usuario = retry;
+      } else {
+        throw insErr;
+      }
+    } else {
+      usuario = novo;
+      usuarioFoiCriado = true;
+    }
+  }
 
   const insertData: any = {
     cliente_id: usuario.id,
@@ -180,7 +212,9 @@ export async function createAppointment(
       typeof agError.message === "string" &&
       agError.message.includes(SLOT_UNIQUE_INDEX)
     ) {
-      await supabase.from("usuarios").delete().eq("id", usuario.id);
+      if (usuarioFoiCriado) {
+        await supabase.from("usuarios").delete().eq("id", usuario.id);
+      }
       throw new SlotIndisponivelError();
     }
     throw agError;
