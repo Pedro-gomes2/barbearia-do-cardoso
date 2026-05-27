@@ -1,5 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export const SLOT_UNIQUE_INDEX = "agendamentos_unique_slot_active";
+
+export class SlotIndisponivelError extends Error {
+  constructor() {
+    super("Esse horário acabou de ser reservado por outra pessoa.");
+    this.name = "SlotIndisponivelError";
+  }
+}
+
 export async function getAvailableSlots(date: string) {
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
