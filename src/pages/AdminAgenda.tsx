@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, MessageCircle, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, MessageCircle, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { confirmAgendamento, cancelAgendamentoAdmin } from "@/lib/confirmacao-helpers";
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const FALLBACK_WHATSAPP = "5521995323454";
@@ -44,13 +45,17 @@ export default function AdminAgenda() {
   const { data: agendamentosHoje = [] } = useQuery({
     queryKey: ["agendamentos-hoje", today],
     queryFn: async () => {
+      await supabase.rpc("expire_pending_agendamentos");
       const { data } = await supabase
         .from("agendamentos")
-        .select("id, horario, telefone_cliente, usuarios(nome)")
+        .select("id, horario, telefone_cliente, status, expira_em, usuarios(nome)")
         .eq("data", today)
-        .eq("status", "ativo")
+        .in("status", ["pendente", "ativo"])
         .order("horario");
-      return data || [];
+      return (data || []).sort((a: any, b: any) => {
+        if (a.status === b.status) return a.horario.localeCompare(b.horario);
+        return a.status === "pendente" ? -1 : 1;
+      });
     },
   });
 
@@ -147,14 +152,56 @@ export default function AdminAgenda() {
         ) : (
           <div className="space-y-2">
             {agendamentosHoje.map((ag: any) => (
-              <div key={ag.id} className="flex items-center justify-between gap-2 border border-border rounded-lg px-3 py-2">
-                <div>
-                  <p className="font-body text-sm font-semibold">{ag.usuarios?.nome || "Cliente"}</p>
-                  <p className="font-body text-xs text-muted-foreground">{ag.horario?.slice(0, 5)}</p>
+              <div
+                key={ag.id}
+                className={`flex flex-col gap-2 border rounded-lg px-3 py-2 ${
+                  ag.status === "pendente"
+                    ? "border-yellow-400 bg-yellow-50"
+                    : "border-border"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-body text-sm font-semibold">{ag.usuarios?.nome || "Cliente"}</p>
+                    <p className="font-body text-xs text-muted-foreground">{ag.horario?.slice(0, 5)}</p>
+                    {ag.status === "pendente" && (
+                      <div className="flex items-center gap-2 text-xs text-yellow-700 font-body mt-1">
+                        <Clock className="h-3 w-3" />
+                        <span>AGUARDANDO CONFIRMAÇÃO</span>
+                        {ag.expira_em && (
+                          <span>(expira em {Math.max(0, Math.round((new Date(ag.expira_em).getTime() - Date.now()) / 60000))} min)</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => enviarLembrete(ag)}>
+                    <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
+                  </Button>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => enviarLembrete(ag)}>
-                  <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
-                </Button>
+                {ag.status === "pendente" && (
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" onClick={async () => {
+                      try {
+                        await confirmAgendamento(ag.id);
+                        queryClient.invalidateQueries({ queryKey: ["agendamentos-hoje", today] });
+                        queryClient.invalidateQueries({ queryKey: ["pendentes-count"] });
+                        toast({ title: "Confirmado", description: "Agendamento confirmado" });
+                      } catch (e: any) {
+                        toast({ title: "Erro", description: e.message, variant: "destructive" });
+                      }
+                    }}>Confirmar</Button>
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      try {
+                        await cancelAgendamentoAdmin(ag.id);
+                        queryClient.invalidateQueries({ queryKey: ["agendamentos-hoje", today] });
+                        queryClient.invalidateQueries({ queryKey: ["pendentes-count"] });
+                        toast({ title: "Cancelado", description: "Agendamento cancelado" });
+                      } catch (e: any) {
+                        toast({ title: "Erro", description: e.message, variant: "destructive" });
+                      }
+                    }}>Cancelar</Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
