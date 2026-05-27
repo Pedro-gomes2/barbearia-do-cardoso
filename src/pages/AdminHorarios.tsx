@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import { createEncaixe, replaceAgendamentoServicos } from "@/lib/admin-horarios-helpers";
+import { SlotIndisponivelError } from "@/lib/supabase-helpers";
 
 export default function AdminHorarios() {
   const [data, setData] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -29,6 +31,7 @@ export default function AdminHorarios() {
   const [openReplaceDialog, setOpenReplaceDialog] = useState(false);
   const [openRemoveDialog, setOpenRemoveDialog] = useState(false);
   const [selectedAgendamentoId, setSelectedAgendamentoId] = useState<string | null>(null);
+  const [selectedServicoIds, setSelectedServicoIds] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
 
@@ -46,28 +49,45 @@ export default function AdminHorarios() {
           .order("horario"),
         supabase
           .from("agendamentos")
-          .select("horario, usuarios(nome)")
+          .select("id, horario, status, usuarios(nome), agendamento_servicos(servicos(nome))")
           .eq("data", data)
-          .eq("status", "ativo"),
+          .in("status", ["pendente", "ativo"]),
         supabase
           .from("bloqueios")
           .select("horario, motivo")
           .eq("data", data),
       ]);
 
-      const agendadosMap = Object.fromEntries(
-        (agendados || []).map((a: any) => [a.horario, a.usuarios?.nome || "Cliente"])
-      );
+      const agendadosMap: Record<string, { nome: string; servicos: string[]; status: "pendente" | "ativo"; id: string }> = {};
+      for (const a of (agendados || []) as any[]) {
+        agendadosMap[a.horario] = {
+          id: a.id,
+          nome: a.usuarios?.nome ?? "Cliente",
+          servicos: (a.agendamento_servicos ?? [])
+            .map((j: any) => j.servicos?.nome)
+            .filter((n: any): n is string => !!n),
+          status: a.status,
+        };
+      }
       const bloqueadosMap = Object.fromEntries(
         (bloqueados || []).map((b: any) => [b.horario, b.motivo || "Bloqueado"])
-
       );
 
       return (customSlots || []).map((s) => {
         const h = s.horario;
-        if (agendadosMap[h]) return { horario: h, status: "ocupado", info: agendadosMap[h] };
-        if (bloqueadosMap[h]) return { horario: h, status: "bloqueado", info: bloqueadosMap[h] };
-        return { horario: h, status: "livre", info: "" };
+        if (agendadosMap[h]) {
+          const a = agendadosMap[h];
+          return {
+            horario: h,
+            status: "ocupado" as const,
+            info: a.nome,
+            servicos: a.servicos,
+            agendamentoStatus: a.status,
+            agendamentoId: a.id,
+          };
+        }
+        if (bloqueadosMap[h]) return { horario: h, status: "bloqueado" as const, info: bloqueadosMap[h], servicos: [], agendamentoStatus: null, agendamentoId: null };
+        return { horario: h, status: "livre" as const, info: "", servicos: [], agendamentoStatus: null, agendamentoId: null };
       });
     },
   });
@@ -86,6 +106,18 @@ export default function AdminHorarios() {
 
       usuarios.sort((a: any, b: any) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
       return usuarios;
+    },
+  });
+
+  const { data: servicosAtivos = [] } = useQuery({
+    queryKey: ["servicos-ativos"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servicos")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+      return data || [];
     },
   });
 
@@ -129,15 +161,28 @@ export default function AdminHorarios() {
   });
 
   const encaixeMutation = useMutation({
-    mutationFn: async (payload: { cliente_id: string; data: string; horario: string }) => {
-      const { error } = await supabase.from("agendamentos").insert({ cliente_id: payload.cliente_id, data: payload.data, horario: payload.horario, status: "ativo" });
-      if (error) throw error;
+    mutationFn: async (payload: { cliente_id: string; data: string; horario: string; servicoIds: string[] }) => {
+      await createEncaixe(payload.cliente_id, payload.data, payload.horario, payload.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
       toast({ title: "Agendamento criado", description: "Encaixe criado com sucesso" });
       setOpenEncaixeDialog(false);
       setSelectedSlot(null);
+      setSelectedCliente(null);
+      setSelectedServicoIds([]);
+    },
+    onError: (err: any) => {
+      if (err instanceof SlotIndisponivelError) {
+        toast({ title: "Slot indisponível", description: err.message, variant: "destructive" });
+        queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
+        setOpenEncaixeDialog(false);
+        setSelectedSlot(null);
+        setSelectedCliente(null);
+        setSelectedServicoIds([]);
+        return;
+      }
+      toast({ title: "Erro", description: err?.message ?? "Erro ao criar encaixe", variant: "destructive" });
     },
   });
 
@@ -156,9 +201,8 @@ export default function AdminHorarios() {
   });
 
   const replaceAgendamento = useMutation({
-    mutationFn: async (payload: { agendamentoId: string; clienteId: string }) => {
-      const { error } = await supabase.from("agendamentos").update({ cliente_id: payload.clienteId }).eq("id", payload.agendamentoId);
-      if (error) throw error;
+    mutationFn: async (payload: { agendamentoId: string; clienteId: string; servicoIds: string[] }) => {
+      await replaceAgendamentoServicos(payload.agendamentoId, payload.clienteId, payload.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
@@ -167,6 +211,10 @@ export default function AdminHorarios() {
       setSelectedAgendamentoId(null);
       setSelectedSlot(null);
       setSelectedCliente(null);
+      setSelectedServicoIds([]);
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err?.message ?? "Erro ao substituir cliente", variant: "destructive" });
     },
   });
 
@@ -302,14 +350,34 @@ export default function AdminHorarios() {
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Serviços</Label>
+              <div className="max-h-32 overflow-auto space-y-1 border rounded-md p-2">
+                {servicosAtivos.map((sv: any) => (
+                  <label key={sv.id} className="flex items-center gap-2 p-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedServicoIds.includes(sv.id)}
+                      onChange={(e) => {
+                        setSelectedServicoIds((prev) =>
+                          e.target.checked ? [...prev, sv.id] : prev.filter((id) => id !== sv.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{sv.nome}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setOpenEncaixeDialog(false); setSelectedCliente(null); setSelectedSlot(null); }}>
+            <Button variant="outline" onClick={() => { setOpenEncaixeDialog(false); setSelectedCliente(null); setSelectedSlot(null); setSelectedServicoIds([]); }}>
               Cancelar
             </Button>
             <Button onClick={() => {
               if (!selectedCliente || !selectedSlot) return toast({ title: "Aviso", description: "Selecione um cliente", variant: "destructive" });
-              encaixeMutation.mutate({ cliente_id: selectedCliente.id, data, horario: selectedSlot.horario });
+              if (selectedServicoIds.length === 0) return toast({ title: "Aviso", description: "Selecione ao menos um serviço", variant: "destructive" });
+              encaixeMutation.mutate({ cliente_id: selectedCliente.id, data, horario: selectedSlot.horario, servicoIds: selectedServicoIds });
             }} disabled={encaixeMutation.isLoading}>
               Confirmar Encaixe
             </Button>
@@ -365,14 +433,34 @@ export default function AdminHorarios() {
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Serviços</Label>
+              <div className="max-h-32 overflow-auto space-y-1 border rounded-md p-2">
+                {servicosAtivos.map((sv: any) => (
+                  <label key={sv.id} className="flex items-center gap-2 p-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedServicoIds.includes(sv.id)}
+                      onChange={(e) => {
+                        setSelectedServicoIds((prev) =>
+                          e.target.checked ? [...prev, sv.id] : prev.filter((id) => id !== sv.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{sv.nome}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setOpenReplaceDialog(false); setSelectedCliente(null); setSelectedAgendamentoId(null); setSelectedSlot(null); }}>
+            <Button variant="outline" onClick={() => { setOpenReplaceDialog(false); setSelectedCliente(null); setSelectedAgendamentoId(null); setSelectedSlot(null); setSelectedServicoIds([]); }}>
               Cancelar
             </Button>
             <Button onClick={() => {
               if (!selectedAgendamentoId || !selectedCliente?.id) return toast({ title: 'Aviso', description: 'Selecione um cliente', variant: 'destructive' });
-              replaceAgendamento.mutate({ agendamentoId: selectedAgendamentoId, clienteId: selectedCliente.id });
+              if (selectedServicoIds.length === 0) return toast({ title: "Aviso", description: "Selecione ao menos um serviço", variant: "destructive" });
+              replaceAgendamento.mutate({ agendamentoId: selectedAgendamentoId, clienteId: selectedCliente.id, servicoIds: selectedServicoIds });
             }} disabled={replaceAgendamento.isLoading}>
               Confirmar Substituição
             </Button>
@@ -398,6 +486,8 @@ export default function AdminHorarios() {
               className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
                 s.status === "livre"
                   ? "bg-green-50 border-green-200"
+                  : s.status === "ocupado" && s.agendamentoStatus === "pendente"
+                  ? "bg-yellow-50 border-yellow-300"
                   : s.status === "ocupado"
                   ? "bg-red-50 border-red-200"
                   : "bg-muted border-border opacity-60"
@@ -407,7 +497,7 @@ export default function AdminHorarios() {
                 {s.status === "livre" ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 ) : (
-                  <XCircle className="h-5 w-5 text-red-500" />
+                  <XCircle className={`h-5 w-5 ${s.agendamentoStatus === "pendente" ? "text-yellow-600" : "text-red-500"}`} />
                 )}
                 <span className="font-heading text-xl">{s.horario.slice(0, 5)}</span>
               </div>
@@ -415,15 +505,23 @@ export default function AdminHorarios() {
                 <span className={`font-body text-xs px-2 py-0.5 rounded-full ${
                   s.status === "livre"
                     ? "bg-green-100 text-green-700"
+                    : s.status === "ocupado" && s.agendamentoStatus === "pendente"
+                    ? "bg-yellow-100 text-yellow-800"
                     : s.status === "ocupado"
                     ? "bg-red-100 text-red-700"
                     : "bg-muted text-muted-foreground"
                 }`}>
-                  {s.status === "livre" ? "VAGO" : s.status === "ocupado" ? "OCUPADO" : "BLOQUEADO"}
+                  {s.status === "livre"
+                    ? "VAGO"
+                    : s.status === "ocupado" && s.agendamentoStatus === "pendente"
+                    ? "AGUARDANDO CONFIRMAÇÃO"
+                    : s.status === "ocupado"
+                    ? "OCUPADO"
+                    : "BLOQUEADO"}
                 </span>
                 {s.status === "livre" && (
                   <div className="mt-2 flex justify-end">
-                    <Button size="sm" onClick={() => { setSelectedSlot(s); setOpenEncaixeDialog(true); }}>
+                    <Button size="sm" onClick={() => { setSelectedCliente(null); setSelectedServicoIds([]); setSelectedSlot(s); setOpenEncaixeDialog(true); }}>
                       Encaixe
                     </Button>
                   </div>
@@ -431,25 +529,25 @@ export default function AdminHorarios() {
                 {s.info && (
                   <p className="font-body text-xs text-muted-foreground mt-0.5">{s.info}</p>
                 )}
+                {s.servicos && s.servicos.length > 0 && (
+                  <p className="font-body text-xs text-primary mt-0.5">{s.servicos.join(", ")}</p>
+                )}
                 {s.status === "ocupado" && (
                   <div className="mt-2 flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={async () => {
-                      // fetch agendamento id
-                      const { data: ag, error } = await supabase.from('agendamentos').select('id, cliente_id').eq('data', data).eq('horario', s.horario).eq('status', 'ativo').maybeSingle();
-                      if (error || !ag) return toast({ title: 'Erro', description: 'Não foi possível localizar o agendamento', variant: 'destructive' });
-                      setSelectedAgendamentoId(ag.id);
-                      setSelectedCliente({ id: ag.cliente_id });
+                    <Button size="sm" variant="ghost" onClick={() => {
+                      if (!s.agendamentoId) return toast({ title: 'Erro', description: 'Agendamento não encontrado', variant: 'destructive' });
+                      setSelectedAgendamentoId(s.agendamentoId);
                       setSelectedSlot(s);
                       setOpenRemoveDialog(true);
                     }}>
                       Remover
                     </Button>
-                    <Button size="sm" onClick={async () => {
-                      const { data: ag, error } = await supabase.from('agendamentos').select('id, cliente_id').eq('data', data).eq('horario', s.horario).eq('status', 'ativo').maybeSingle();
-                      if (error || !ag) return toast({ title: 'Erro', description: 'Não foi possível localizar o agendamento', variant: 'destructive' });
-                      setSelectedAgendamentoId(ag.id);
-                      setSelectedCliente({ id: ag.cliente_id });
+                    <Button size="sm" onClick={() => {
+                      if (!s.agendamentoId) return toast({ title: 'Erro', description: 'Agendamento não encontrado', variant: 'destructive' });
+                      setSelectedAgendamentoId(s.agendamentoId);
                       setSelectedSlot(s);
+                      setSelectedCliente(null);
+                      setSelectedServicoIds([]);
                       setOpenReplaceDialog(true);
                     }}>
                       Substituir
