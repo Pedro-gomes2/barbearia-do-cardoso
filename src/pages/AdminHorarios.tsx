@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import { createEncaixe, replaceAgendamentoServicos } from "@/lib/admin-horarios-helpers";
+import { SlotIndisponivelError } from "@/lib/supabase-helpers";
 
 export default function AdminHorarios() {
   const [data, setData] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -159,15 +161,28 @@ export default function AdminHorarios() {
   });
 
   const encaixeMutation = useMutation({
-    mutationFn: async (payload: { cliente_id: string; data: string; horario: string }) => {
-      const { error } = await supabase.from("agendamentos").insert({ cliente_id: payload.cliente_id, data: payload.data, horario: payload.horario, status: "ativo" });
-      if (error) throw error;
+    mutationFn: async (payload: { cliente_id: string; data: string; horario: string; servicoIds: string[] }) => {
+      await createEncaixe(payload.cliente_id, payload.data, payload.horario, payload.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
       toast({ title: "Agendamento criado", description: "Encaixe criado com sucesso" });
       setOpenEncaixeDialog(false);
       setSelectedSlot(null);
+      setSelectedCliente(null);
+      setSelectedServicoIds([]);
+    },
+    onError: (err: any) => {
+      if (err instanceof SlotIndisponivelError) {
+        toast({ title: "Slot indisponível", description: err.message, variant: "destructive" });
+        queryClient.invalidateQueries({ queryKey: ["admin-horarios", data] });
+        setOpenEncaixeDialog(false);
+        setSelectedSlot(null);
+        setSelectedCliente(null);
+        setSelectedServicoIds([]);
+        return;
+      }
+      toast({ title: "Erro", description: err?.message ?? "Erro ao criar encaixe", variant: "destructive" });
     },
   });
 
@@ -332,14 +347,34 @@ export default function AdminHorarios() {
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Serviços</Label>
+              <div className="max-h-32 overflow-auto space-y-1 border rounded-md p-2">
+                {servicosAtivos.map((sv: any) => (
+                  <label key={sv.id} className="flex items-center gap-2 p-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedServicoIds.includes(sv.id)}
+                      onChange={(e) => {
+                        setSelectedServicoIds((prev) =>
+                          e.target.checked ? [...prev, sv.id] : prev.filter((id) => id !== sv.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{sv.nome}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setOpenEncaixeDialog(false); setSelectedCliente(null); setSelectedSlot(null); }}>
+            <Button variant="outline" onClick={() => { setOpenEncaixeDialog(false); setSelectedCliente(null); setSelectedSlot(null); setSelectedServicoIds([]); }}>
               Cancelar
             </Button>
             <Button onClick={() => {
               if (!selectedCliente || !selectedSlot) return toast({ title: "Aviso", description: "Selecione um cliente", variant: "destructive" });
-              encaixeMutation.mutate({ cliente_id: selectedCliente.id, data, horario: selectedSlot.horario });
+              if (selectedServicoIds.length === 0) return toast({ title: "Aviso", description: "Selecione ao menos um serviço", variant: "destructive" });
+              encaixeMutation.mutate({ cliente_id: selectedCliente.id, data, horario: selectedSlot.horario, servicoIds: selectedServicoIds });
             }} disabled={encaixeMutation.isLoading}>
               Confirmar Encaixe
             </Button>
