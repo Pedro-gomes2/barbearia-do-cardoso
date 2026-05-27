@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { usePendentesCount } from "@/lib/confirmacao-helpers";
 
 const items = [
   { title: "Dashboard", url: "/admin/dashboard", icon: BarChart3 },
@@ -37,6 +38,7 @@ export function AdminSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { count: pendentesCount } = usePendentesCount();
 
   const isActive = (path: string) => pathname === path;
 
@@ -82,6 +84,11 @@ export function AdminSidebar() {
                     <NavLink to={item.url} className="flex items-center gap-2 hover:bg-muted/50">
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {item.title === "Agenda" && pendentesCount > 0 && (
+                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-bold px-1.5 py-0.5 min-w-[1.25rem]">
+                          {pendentesCount}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
