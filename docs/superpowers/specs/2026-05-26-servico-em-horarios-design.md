@@ -35,12 +35,14 @@ Em `src/pages/AdminHorarios.tsx`, substituir o select dos agendamentos por:
 ```ts
 supabase
   .from("agendamentos")
-  .select("id, horario, usuarios(nome), agendamento_servicos(servicos(nome))")
+  .select("id, horario, status, usuarios(nome), agendamento_servicos(servicos(nome))")
   .eq("data", data)
-  .eq("status", "ativo")
+  .in("status", ["pendente", "ativo"])
 ```
 
-Mapear cada agendamento para `{ nome: string, servicos: string[] }`. Slots livres/bloqueados continuam com `servicos: []`.
+Mapear cada agendamento para `{ nome: string, servicos: string[], status: "pendente" | "ativo" }`. Slots livres/bloqueados continuam sem essas chaves.
+
+**Nota de dependência:** Esta feature assume o status `pendente` introduzido pela [spec de confirmação WhatsApp](2026-05-26-confirmacao-whatsapp-design.md). Se for implementada antes daquela, usar apenas `.eq("status", "ativo")` e remover o destaque visual de pendente.
 
 ### 2. UI — exibir serviço
 
@@ -52,7 +54,7 @@ No render dos slots, abaixo do `<p>` do nome do cliente:
 )}
 ```
 
-Agendamentos legados (sem linhas na junction) renderizam só o nome — sem regressão visual.
+Slots com `status === "pendente"` usam borda/fundo amarelo + badge "AGUARDANDO CONFIRMAÇÃO" em vez do vermelho de ocupado. Agendamentos legados (sem linhas na junction) renderizam só o nome — sem regressão visual.
 
 ### 3. UI — escolher serviço no Encaixe e Substituição
 
