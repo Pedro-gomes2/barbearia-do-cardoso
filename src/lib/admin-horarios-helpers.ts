@@ -65,3 +65,32 @@ export async function createEncaixe(
     throw junctionError;
   }
 }
+
+export async function replaceAgendamentoServicos(
+  agendamentoId: string,
+  novoClienteId: string,
+  servicoIds: string[]
+): Promise<void> {
+  const { error: updateError } = await supabase
+    .from("agendamentos")
+    .update({ cliente_id: novoClienteId })
+    .eq("id", agendamentoId);
+  if (updateError) throw updateError;
+
+  const { error: deleteError } = await supabase
+    .from("agendamento_servicos")
+    .delete()
+    .eq("agendamento_id", agendamentoId);
+  if (deleteError) throw deleteError;
+
+  if (servicoIds.length === 0) return;
+
+  const rows = servicoIds.map((sid) => ({
+    agendamento_id: agendamentoId,
+    servico_id: sid,
+  }));
+  const { error: insertError } = await supabase
+    .from("agendamento_servicos")
+    .insert(rows);
+  if (insertError) throw insertError;
+}

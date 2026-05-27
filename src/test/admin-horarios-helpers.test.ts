@@ -148,3 +148,27 @@ describe("createEncaixe", () => {
     ).rejects.toBeInstanceOf(SlotIndisponivelError);
   });
 });
+
+import { replaceAgendamentoServicos } from "@/lib/admin-horarios-helpers";
+
+describe("replaceAgendamentoServicos", () => {
+  it("happy path: update cliente, delete junction antigo, insert novo", async () => {
+    await replaceAgendamentoServicos("ag-existente", "cliente-novo", ["s1", "s2"]);
+    const s = getState();
+    expect(s.updatedAgendamentos).toEqual([
+      { id: "ag-existente", payload: { cliente_id: "cliente-novo" } },
+    ]);
+    expect(s.deletedJunctionAgendamentoIds).toEqual(["ag-existente"]);
+    expect(s.insertedJunctionRows).toEqual([
+      { agendamento_id: "ag-existente", servico_id: "s1" },
+      { agendamento_id: "ag-existente", servico_id: "s2" },
+    ]);
+  });
+
+  it("propaga erro do update", async () => {
+    getState().agendamentoUpdateError = { message: "update falhou" };
+    await expect(
+      replaceAgendamentoServicos("ag-x", "cli-x", ["s1"])
+    ).rejects.toMatchObject({ message: "update falhou" });
+  });
+});
