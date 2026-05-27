@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { getFavoritosCliente, saveFavoritosCliente } from "@/lib/admin-horarios-helpers";
+import { normalizarTelefone } from "@/lib/telefone";
 import { format, parseISO } from "date-fns";
 
 interface Cliente {
@@ -154,6 +155,18 @@ export default function AdminClientes() {
 
   const createMutation = useMutation({
     mutationFn: async (data: { nome: string; telefone: string; servicoIds: string[] }) => {
+      const telNorm = normalizarTelefone(data.telefone);
+      if (telNorm) {
+        const { data: existente } = await supabase
+          .from("usuarios")
+          .select("id")
+          .eq("telefone_normalizado", telNorm)
+          .eq("tipo", "cliente")
+          .maybeSingle();
+        if (existente) {
+          throw new Error("DUPLICADO");
+        }
+      }
       const { data: novo, error } = await supabase
         .from("usuarios")
         .insert({ nome: data.nome, telefone: data.telefone, tipo: "cliente" })
@@ -169,11 +182,30 @@ export default function AdminClientes() {
       setSelectedServicoIds([]);
       toast({ title: "Cliente adicionado", description: "Cliente foi adicionado com sucesso" });
     },
-    onError: () => toast({ title: "Erro", description: "Erro ao adicionar cliente", variant: "destructive" })
+    onError: (err: any) => {
+      if (err?.message === "DUPLICADO") {
+        toast({ title: "Telefone já cadastrado", description: "Já existe um cliente com este telefone.", variant: "destructive" });
+      } else {
+        toast({ title: "Erro", description: "Erro ao adicionar cliente", variant: "destructive" });
+      }
+    }
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string; nome: string; telefone: string; servicoIds: string[] }) => {
+      const telNorm = normalizarTelefone(data.telefone);
+      if (telNorm) {
+        const { data: outro } = await supabase
+          .from("usuarios")
+          .select("id")
+          .eq("telefone_normalizado", telNorm)
+          .eq("tipo", "cliente")
+          .neq("id", data.id)
+          .maybeSingle();
+        if (outro) {
+          throw new Error("DUPLICADO");
+        }
+      }
       const { error } = await supabase
         .from("usuarios")
         .update({ nome: data.nome, telefone: data.telefone })
@@ -189,7 +221,13 @@ export default function AdminClientes() {
       setSelectedServicoIds([]);
       toast({ title: "Cliente atualizado", description: "Dados do cliente foram atualizados com sucesso" });
     },
-    onError: () => toast({ title: "Erro", description: "Erro ao atualizar cliente", variant: "destructive" })
+    onError: (err: any) => {
+      if (err?.message === "DUPLICADO") {
+        toast({ title: "Telefone já cadastrado", description: "Já existe um cliente com este telefone.", variant: "destructive" });
+      } else {
+        toast({ title: "Erro", description: "Erro ao atualizar cliente", variant: "destructive" });
+      }
+    }
   });
 
   const deleteMutation = useMutation({
