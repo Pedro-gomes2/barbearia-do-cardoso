@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { getFavoritosCliente, saveFavoritosCliente } from "@/lib/admin-horarios-helpers";
 
 interface Cliente {
   id: string;
@@ -37,7 +38,20 @@ export default function AdminClientes() {
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [formData, setFormData] = useState({ nome: "", telefone: "" });
+  const [selectedServicoIds, setSelectedServicoIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
+
+  const { data: servicosAtivos = [] } = useQuery({
+    queryKey: ["servicos-ativos"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servicos")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+      return data || [];
+    },
+  });
 
   const { data: clientes = [], isLoading } = useQuery({
     queryKey: ["admin-clientes"],
@@ -70,18 +84,20 @@ export default function AdminClientes() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { nome: string; telefone: string }) => {
-      const { error } = await supabase.from("usuarios").insert({
-        nome: data.nome,
-        telefone: data.telefone,
-        tipo: "cliente",
-      });
+    mutationFn: async (data: { nome: string; telefone: string; servicoIds: string[] }) => {
+      const { data: novo, error } = await supabase
+        .from("usuarios")
+        .insert({ nome: data.nome, telefone: data.telefone, tipo: "cliente" })
+        .select("id")
+        .single();
       if (error) throw error;
+      await saveFavoritosCliente(novo.id, data.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-clientes"] });
       setOpenDialog(false);
       setFormData({ nome: "", telefone: "" });
+      setSelectedServicoIds([]);
       toast({
         title: "Cliente adicionado",
         description: "Cliente foi adicionado com sucesso",
@@ -97,7 +113,7 @@ export default function AdminClientes() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; nome: string; telefone: string }) => {
+    mutationFn: async (data: { id: string; nome: string; telefone: string; servicoIds: string[] }) => {
       const { error } = await supabase
         .from("usuarios")
         .update({
@@ -106,12 +122,14 @@ export default function AdminClientes() {
         })
         .eq("id", data.id);
       if (error) throw error;
+      await saveFavoritosCliente(data.id, data.servicoIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-clientes"] });
       setOpenDialog(false);
       setSelectedCliente(null);
       setFormData({ nome: "", telefone: "" });
+      setSelectedServicoIds([]);
       toast({
         title: "Cliente atualizado",
         description: "Dados do cliente foram atualizados com sucesso",
@@ -152,13 +170,20 @@ export default function AdminClientes() {
     },
   });
 
-  const handleOpenDialog = (cliente?: Cliente) => {
+  const handleOpenDialog = async (cliente?: Cliente) => {
     if (cliente) {
       setSelectedCliente(cliente);
       setFormData({ nome: cliente.nome, telefone: cliente.telefone });
+      try {
+        const favs = await getFavoritosCliente(cliente.id);
+        setSelectedServicoIds(favs);
+      } catch {
+        setSelectedServicoIds([]);
+      }
     } else {
       setSelectedCliente(null);
       setFormData({ nome: "", telefone: "" });
+      setSelectedServicoIds([]);
     }
     setOpenDialog(true);
   };
@@ -178,9 +203,10 @@ export default function AdminClientes() {
         id: selectedCliente.id,
         nome: formData.nome,
         telefone: formData.telefone,
+        servicoIds: selectedServicoIds,
       });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate({ ...formData, servicoIds: selectedServicoIds });
     }
   };
 
@@ -299,6 +325,27 @@ export default function AdminClientes() {
                 value={formData.telefone}
                 onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Serviços favoritos</Label>
+              <div className="max-h-32 overflow-auto space-y-1 border rounded-md p-2">
+                {servicosAtivos.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum serviço ativo cadastrado.</p>
+                ) : servicosAtivos.map((sv: any) => (
+                  <label key={sv.id} className="flex items-center gap-2 p-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedServicoIds.includes(sv.id)}
+                      onChange={(e) => {
+                        setSelectedServicoIds((prev) =>
+                          e.target.checked ? [...prev, sv.id] : prev.filter((id) => id !== sv.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{sv.nome}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

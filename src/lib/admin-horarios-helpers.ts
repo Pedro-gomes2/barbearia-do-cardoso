@@ -94,3 +94,34 @@ export async function replaceAgendamentoServicos(
     .insert(rows);
   if (insertError) throw insertError;
 }
+
+export async function getFavoritosCliente(clienteId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("cliente_servicos_favoritos")
+    .select("servico_id")
+    .eq("cliente_id", clienteId);
+  if (error) throw error;
+  return (data ?? []).map((r: any) => r.servico_id);
+}
+
+export async function saveFavoritosCliente(
+  clienteId: string,
+  servicoIds: string[]
+): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from("cliente_servicos_favoritos")
+    .delete()
+    .eq("cliente_id", clienteId);
+  if (deleteError) throw deleteError;
+
+  if (servicoIds.length === 0) return;
+
+  const rows = servicoIds.map((sid) => ({
+    cliente_id: clienteId,
+    servico_id: sid,
+  }));
+  const { error: insertError } = await supabase
+    .from("cliente_servicos_favoritos")
+    .insert(rows);
+  if (insertError) throw insertError;
+}
