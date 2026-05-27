@@ -6,7 +6,7 @@ import { Scissors, Calendar, Clock, User, Phone, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createAppointment } from "@/lib/supabase-helpers";
+import { createAppointment, SlotIndisponivelError } from "@/lib/supabase-helpers";
 import { useToast } from "@/hooks/use-toast";
 import type { Servico } from "@/components/ServiceSelector";
 
@@ -58,6 +58,15 @@ export default function AgendamentoDados() {
       await createAppointment(nomeCompleto, telefone, date, time, servicos.map((s) => s.id));
       navigate("/agendamento/sucesso", { state: { nome: nomeCompleto, date, time, servicos } });
     } catch (err: any) {
+      if (err instanceof SlotIndisponivelError) {
+        toast({
+          title: "Horário indisponível",
+          description: "Esse horário acabou de ser reservado por outra pessoa. Escolha outro.",
+          variant: "destructive",
+        });
+        navigate("/agendamento", { state: { date }, replace: true });
+        return;
+      }
       toast({ title: "Erro ao agendar", description: err.message || "Tente novamente.", variant: "destructive" });
     } finally {
       setLoading(false);
