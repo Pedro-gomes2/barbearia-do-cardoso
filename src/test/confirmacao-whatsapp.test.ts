@@ -83,6 +83,85 @@ const getState = () => (supabase as any).__state;
 
 beforeEach(() => { getState().lastAgendamentoInsert = null; });
 
+describe("getAvailableSlots - cleanup e pendente como ocupado", () => {
+  let originalFrom: typeof supabase.from;
+  beforeEach(() => { originalFrom = supabase.from.bind(supabase); });
+  afterEach(() => { (supabase as any).from = originalFrom; delete (supabase as any).rpc; });
+
+  it("chama RPC expire_pending_agendamentos antes da consulta", async () => {
+    const rpcCalls: string[] = [];
+    (supabase as any).rpc = (name: string) => {
+      rpcCalls.push(name);
+      return Promise.resolve({ error: null });
+    };
+    (supabase as any).from = (table: string) => {
+      if (table === "configuracoes_agenda" || table === "horarios_customizados") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                order: () => Promise.resolve({ data: [] }),
+                single: async () => ({ data: { ativo: true } }),
+              }),
+              single: async () => ({ data: { ativo: true } }),
+            }),
+          }),
+        };
+      }
+      if (table === "agendamentos" || table === "bloqueios") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => Promise.resolve({ data: [] }),
+              in: () => Promise.resolve({ data: [] }),
+            }),
+          }),
+        };
+      }
+      return originalFrom(table);
+    };
+
+    const { getAvailableSlots } = await import("@/lib/supabase-helpers");
+    await getAvailableSlots("2026-06-15");
+    expect(rpcCalls).toContain("expire_pending_agendamentos");
+  });
+
+  it("trata agendamento pendente como ocupado", async () => {
+    (supabase as any).rpc = () => Promise.resolve({ error: null });
+    (supabase as any).from = (table: string) => {
+      if (table === "configuracoes_agenda") {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { ativo: true } }) }) }) };
+      }
+      if (table === "horarios_customizados") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ order: () => Promise.resolve({ data: [{ horario: "10:00:00" }] }) }),
+            }),
+          }),
+        };
+      }
+      if (table === "agendamentos") {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ horario: "10:00:00" }] }),
+            }),
+          }),
+        };
+      }
+      if (table === "bloqueios") {
+        return { select: () => ({ eq: () => Promise.resolve({ data: [] }) }) };
+      }
+      return {};
+    };
+
+    const { getAvailableSlots } = await import("@/lib/supabase-helpers");
+    const slots = await getAvailableSlots("2026-06-15");
+    expect(slots).toEqual([{ time: "10:00:00", available: false }]);
+  });
+});
+
 describe("createAppointment - status pendente + expira_em", () => {
   it("insere com status pendente", async () => {
     await createAppointment("Joao", "21999999999", "2026-06-15", "10:30:00", []);
