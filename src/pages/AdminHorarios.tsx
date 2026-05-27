@@ -29,6 +29,7 @@ export default function AdminHorarios() {
   const [openReplaceDialog, setOpenReplaceDialog] = useState(false);
   const [openRemoveDialog, setOpenRemoveDialog] = useState(false);
   const [selectedAgendamentoId, setSelectedAgendamentoId] = useState<string | null>(null);
+  const [selectedServicoIds, setSelectedServicoIds] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
 
@@ -103,6 +104,18 @@ export default function AdminHorarios() {
 
       usuarios.sort((a: any, b: any) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
       return usuarios;
+    },
+  });
+
+  const { data: servicosAtivos = [] } = useQuery({
+    queryKey: ["servicos-ativos"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servicos")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+      return data || [];
     },
   });
 
@@ -415,6 +428,8 @@ export default function AdminHorarios() {
               className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
                 s.status === "livre"
                   ? "bg-green-50 border-green-200"
+                  : s.status === "ocupado" && s.agendamentoStatus === "pendente"
+                  ? "bg-yellow-50 border-yellow-300"
                   : s.status === "ocupado"
                   ? "bg-red-50 border-red-200"
                   : "bg-muted border-border opacity-60"
@@ -424,7 +439,7 @@ export default function AdminHorarios() {
                 {s.status === "livre" ? (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 ) : (
-                  <XCircle className="h-5 w-5 text-red-500" />
+                  <XCircle className={`h-5 w-5 ${s.agendamentoStatus === "pendente" ? "text-yellow-600" : "text-red-500"}`} />
                 )}
                 <span className="font-heading text-xl">{s.horario.slice(0, 5)}</span>
               </div>
@@ -432,15 +447,23 @@ export default function AdminHorarios() {
                 <span className={`font-body text-xs px-2 py-0.5 rounded-full ${
                   s.status === "livre"
                     ? "bg-green-100 text-green-700"
+                    : s.status === "ocupado" && s.agendamentoStatus === "pendente"
+                    ? "bg-yellow-100 text-yellow-800"
                     : s.status === "ocupado"
                     ? "bg-red-100 text-red-700"
                     : "bg-muted text-muted-foreground"
                 }`}>
-                  {s.status === "livre" ? "VAGO" : s.status === "ocupado" ? "OCUPADO" : "BLOQUEADO"}
+                  {s.status === "livre"
+                    ? "VAGO"
+                    : s.status === "ocupado" && s.agendamentoStatus === "pendente"
+                    ? "AGUARDANDO CONFIRMAÇÃO"
+                    : s.status === "ocupado"
+                    ? "OCUPADO"
+                    : "BLOQUEADO"}
                 </span>
                 {s.status === "livre" && (
                   <div className="mt-2 flex justify-end">
-                    <Button size="sm" onClick={() => { setSelectedSlot(s); setOpenEncaixeDialog(true); }}>
+                    <Button size="sm" onClick={() => { setSelectedCliente(null); setSelectedServicoIds([]); setSelectedSlot(s); setOpenEncaixeDialog(true); }}>
                       Encaixe
                     </Button>
                   </div>
@@ -448,25 +471,25 @@ export default function AdminHorarios() {
                 {s.info && (
                   <p className="font-body text-xs text-muted-foreground mt-0.5">{s.info}</p>
                 )}
+                {s.servicos && s.servicos.length > 0 && (
+                  <p className="font-body text-xs text-primary mt-0.5">{s.servicos.join(", ")}</p>
+                )}
                 {s.status === "ocupado" && (
                   <div className="mt-2 flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={async () => {
-                      // fetch agendamento id
-                      const { data: ag, error } = await supabase.from('agendamentos').select('id, cliente_id').eq('data', data).eq('horario', s.horario).eq('status', 'ativo').maybeSingle();
-                      if (error || !ag) return toast({ title: 'Erro', description: 'Não foi possível localizar o agendamento', variant: 'destructive' });
-                      setSelectedAgendamentoId(ag.id);
-                      setSelectedCliente({ id: ag.cliente_id });
+                    <Button size="sm" variant="ghost" onClick={() => {
+                      if (!s.agendamentoId) return toast({ title: 'Erro', description: 'Agendamento não encontrado', variant: 'destructive' });
+                      setSelectedAgendamentoId(s.agendamentoId);
                       setSelectedSlot(s);
                       setOpenRemoveDialog(true);
                     }}>
                       Remover
                     </Button>
-                    <Button size="sm" onClick={async () => {
-                      const { data: ag, error } = await supabase.from('agendamentos').select('id, cliente_id').eq('data', data).eq('horario', s.horario).eq('status', 'ativo').maybeSingle();
-                      if (error || !ag) return toast({ title: 'Erro', description: 'Não foi possível localizar o agendamento', variant: 'destructive' });
-                      setSelectedAgendamentoId(ag.id);
-                      setSelectedCliente({ id: ag.cliente_id });
+                    <Button size="sm" onClick={() => {
+                      if (!s.agendamentoId) return toast({ title: 'Erro', description: 'Agendamento não encontrado', variant: 'destructive' });
+                      setSelectedAgendamentoId(s.agendamentoId);
                       setSelectedSlot(s);
+                      setSelectedCliente(null);
+                      setSelectedServicoIds([]);
                       setOpenReplaceDialog(true);
                     }}>
                       Substituir
