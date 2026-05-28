@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DollarSign, TrendingUp, Calendar, ArrowLeft, ArrowRight, Wallet, Info, Phone, Clock, User, Scissors, ArrowDownCircle, Plus, X, Save } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ArrowLeft, ArrowRight, Wallet, Info, Phone, Clock, User, Scissors, ArrowDownCircle, Plus, X, Save, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -64,7 +64,7 @@ export default function AdminFinanceiro() {
     return { start: subMonths(new Date(), 24), end: addMonths(new Date(), 1) };
   })();
 
-  const { data: report = { total: 0, count: 0, items: [], totalDespesas: 0 }, isLoading } = useQuery({
+  const { data: report = { total: 0, count: 0, items: [], totalDespesas: 0 }, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["financeiro", period, range.start.toISOString(), range.end.toISOString(), statusFilter],
     // Sempre busca fresco ao entrar / mudar filtro (faturamento não pode ficar em cache velho)
     staleTime: 0,
@@ -270,6 +270,12 @@ export default function AdminFinanceiro() {
         <DollarSign className="h-10 w-10 text-primary mx-auto" />
         <h2 className="text-3xl font-heading tracking-wider">GESTÃO E FATURAMENTO</h2>
         <p className="text-muted-foreground font-body text-sm">Resumo financeiro e histórico de atendimentos</p>
+        <div className="flex items-center justify-center gap-2 pt-1">
+          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} className="gap-2">
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Atualizando…" : "Atualizar"}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-full">
