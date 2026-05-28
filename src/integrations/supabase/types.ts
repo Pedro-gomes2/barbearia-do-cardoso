@@ -308,6 +308,7 @@ export type Database = {
           nome: string
           ordem: number
           preco: number
+          tipo: string
         }
         Insert: {
           ativo?: boolean
@@ -317,6 +318,7 @@ export type Database = {
           nome: string
           ordem?: number
           preco?: number
+          tipo?: string
         }
         Update: {
           ativo?: boolean
@@ -326,6 +328,7 @@ export type Database = {
           nome?: string
           ordem?: number
           preco?: number
+          tipo?: string
         }
         Relationships: []
       }

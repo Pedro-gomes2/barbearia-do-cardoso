@@ -82,8 +82,10 @@ export default function AdminFinanceiro() {
           .lte("data", format(range.end, "yyyy-MM-dd"));
 
         if (period !== "historico") {
+          // Receita = qualquer atendimento que ocorreu (ativo OU finalizado),
+          // excluindo cancelados e pendentes não confirmados.
           query = query
-            .eq("status", "finalizado")
+            .in("status", ["ativo", "finalizado"])
             .gte("data", format(range.start, "yyyy-MM-dd"))
             .lte("data", format(range.end, "yyyy-MM-dd"));
         } else {
@@ -126,7 +128,7 @@ export default function AdminFinanceiro() {
             const price = priceMap[a.id]?.total || Number(a.servicos?.preco || 0);
             const services = priceMap[a.id]?.names.join(", ") || a.servicos?.nome || "Sem serviço";
             const servicoIds = priceMap[a.id]?.servicoIds || [];
-            if (a.status === "finalizado") total += price;
+            if (a.status === "finalizado" || a.status === "ativo") total += price;
             items.push({
               id: a.id,
               cliente: a.usuarios?.nome || "Cliente avulso",
@@ -142,7 +144,12 @@ export default function AdminFinanceiro() {
           });
         }
 
-        return { total, count: data.filter(a => a.status === 'finalizado').length, items, totalDespesas };
+        return {
+          total,
+          count: data.filter(a => a.status === 'finalizado' || a.status === 'ativo').length,
+          items,
+          totalDespesas,
+        };
       } catch (err: any) {
         console.error("Erro no financeiro:", err);
         setDebugError(err.message);
