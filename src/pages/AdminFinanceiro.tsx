@@ -66,95 +66,116 @@ export default function AdminFinanceiro() {
 
   const { data: report = { total: 0, count: 0, items: [], totalDespesas: 0 }, isLoading } = useQuery({
     queryKey: ["financeiro", period, range.start.toISOString(), range.end.toISOString(), statusFilter],
+    // Sempre busca fresco ao entrar / mudar filtro (faturamento não pode ficar em cache velho)
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       try {
         setDebugError(null);
+
+        const startStr = format(range.start, "yyyy-MM-dd");
+        const endStr = format(range.end, "yyyy-MM-dd");
+
+        // 1) Agendamentos
         let query = supabase
           .from("agendamentos")
           .select("*, usuarios(nome, telefone), servicos(nome, preco)")
           .order("data", { ascending: false })
           .order("horario", { ascending: false });
 
-        let despesasQuery = supabase
-          .from("despesas")
-          .select("valor")
-          .gte("data", format(range.start, "yyyy-MM-dd"))
-          .lte("data", format(range.end, "yyyy-MM-dd"));
-
         if (period !== "historico") {
-          // Só entra no caixa o que o admin marcou como finalizado.
           query = query
             .eq("status", "finalizado")
-            .gte("data", format(range.start, "yyyy-MM-dd"))
-            .lte("data", format(range.end, "yyyy-MM-dd"));
+            .gte("data", startStr)
+            .lte("data", endStr);
         } else {
-          if (statusFilter !== "todos") {
-            query = query.eq("status", statusFilter);
-          }
-          query = query.limit(100);
+          if (statusFilter !== "todos") query = query.eq("status", statusFilter);
+          query = query.limit(200);
         }
 
+        // 2) Despesas (sempre no range do período)
+        const despesasQuery = supabase
+          .from("despesas")
+          .select("valor")
+          .gte("data", startStr)
+          .lte("data", endStr);
+
         const [resAgendamentos, resDespesas] = await Promise.all([query, despesasQuery]);
-        
         if (resAgendamentos.error) throw resAgendamentos.error;
         if (resDespesas.error) throw resDespesas.error;
 
-        const data = resAgendamentos.data || [];
+        const agendamentos = resAgendamentos.data || [];
         const despesasData = resDespesas.data || [];
 
-        const totalDespesas = despesasData.reduce((acc, curr) => acc + Number(curr.valor), 0);
-        const aptIds = data.map(a => a.id);
-        let total = 0;
-        const items: any[] = [];
+        const totalDespesas = despesasData.reduce(
+          (acc, curr) => acc + Number(curr.valor || 0),
+          0
+        );
+
+        // 3) Junção agendamento_servicos → preço total + nomes por agendamento
+        const aptIds = agendamentos.map((a: any) => a.id);
+        const priceMap: Record<
+          string,
+          { total: number; names: string[]; servicoIds: string[]; hasJunction: boolean }
+        > = {};
 
         if (aptIds.length > 0) {
           const { data: junction, error: jError } = await supabase
             .from("agendamento_servicos")
             .select("agendamento_id, servicos(id, nome, preco, duracao_minutos)")
             .in("agendamento_id", aptIds);
-          
           if (jError) throw jError;
 
-          const priceMap: Record<string, { total: number, names: string[], servicoIds: string[] }> = {};
           (junction || []).forEach((j: any) => {
-            if (!priceMap[j.agendamento_id]) priceMap[j.agendamento_id] = { total: 0, names: [], servicoIds: [] };
-            priceMap[j.agendamento_id].total += Number(j.servicos?.preco || 0);
-            priceMap[j.agendamento_id].names.push(j.servicos?.nome);
-            priceMap[j.agendamento_id].servicoIds.push(j.servicos?.id);
-          });
-
-          data.forEach((a: any) => {
-            const price = priceMap[a.id]?.total || Number(a.servicos?.preco || 0);
-            const services = priceMap[a.id]?.names.join(", ") || a.servicos?.nome || "Sem serviço";
-            const servicoIds = priceMap[a.id]?.servicoIds || [];
-            if (a.status === "finalizado") total += price;
-            items.push({
-              id: a.id,
-              cliente: a.usuarios?.nome || "Cliente avulso",
-              clienteId: a.cliente_id,
-              telefone: a.usuarios?.telefone || a.telefone_cliente || "Não informado",
-              data: a.data,
-              horario: a.horario,
-              servicos: services,
-              servicoIds: servicoIds,
-              valor: price,
-              status: a.status
-            });
+            const aid = j.agendamento_id;
+            if (!priceMap[aid]) priceMap[aid] = { total: 0, names: [], servicoIds: [], hasJunction: true };
+            priceMap[aid].total += Number(j.servicos?.preco || 0);
+            if (j.servicos?.nome) priceMap[aid].names.push(j.servicos.nome);
+            if (j.servicos?.id) priceMap[aid].servicoIds.push(j.servicos.id);
           });
         }
 
-        return {
-          total,
-          count: data.filter(a => a.status === 'finalizado').length,
-          items,
-          totalDespesas,
-        };
+        // 4) Monta items e calcula totais
+        let total = 0;
+        let count = 0;
+        const items: any[] = agendamentos.map((a: any) => {
+          // Usa a junção quando existir (mesmo se a soma der 0); senão cai no servico_id legado
+          const fromJunction = priceMap[a.id];
+          const price = fromJunction
+            ? fromJunction.total
+            : Number(a.servicos?.preco || 0);
+          const services =
+            fromJunction && fromJunction.names.length > 0
+              ? fromJunction.names.join(", ")
+              : a.servicos?.nome || "Sem serviço";
+          const servicoIds = fromJunction?.servicoIds || [];
+
+          if (a.status === "finalizado") {
+            total += price;
+            count += 1;
+          }
+
+          return {
+            id: a.id,
+            cliente: a.usuarios?.nome || "Cliente avulso",
+            clienteId: a.cliente_id,
+            telefone: a.usuarios?.telefone || a.telefone_cliente || "Não informado",
+            data: a.data,
+            horario: a.horario,
+            servicos: services,
+            servicoIds,
+            valor: price,
+            status: a.status,
+          };
+        });
+
+        return { total, count, items, totalDespesas };
       } catch (err: any) {
         console.error("Erro no financeiro:", err);
-        setDebugError(err.message);
+        setDebugError(err.message || "Erro desconhecido");
         throw err;
       }
-    }
+    },
   });
 
   const navPrev = () => {

@@ -149,12 +149,19 @@ export default function AdminDashboard() {
 
   const finalizeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("agendamentos").update({ status: "finalizado" }).eq("id", id);
+      const { error, data } = await supabase
+        .from("agendamentos")
+        .update({ status: "finalizado" })
+        .eq("id", id)
+        .select();
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Nada foi atualizado (verifique permissões/login).");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-appointments"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos-hoje"] });
       toast({ title: "Agendamento finalizado!" });
     },
     onError: (err: any) => {

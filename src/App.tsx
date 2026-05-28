@@ -24,6 +24,7 @@ const AdminBloqueios = lazy(() => import("./pages/AdminBloqueios"));
 const AdminServicos = lazy(() => import("./pages/AdminServicos"));
 const AdminConfiguracoes = lazy(() => import("./pages/AdminConfiguracoes"));
 const AdminGerenciarHorarios = lazy(() => import("./pages/AdminGerenciarHorarios"));
+const AdminHorarios = lazy(() => import("./pages/AdminHorarios"));
 const AdminProdutos = lazy(() => import("./pages/AdminProdutos"));
 const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
 const AdminDespesas = lazy(() => import("./pages/AdminDespesas"));
@@ -71,7 +72,8 @@ const App = () => (
               <Route path="/admin/servicos" element={<AdminServicos />} />
               <Route path="/admin/produtos" element={<AdminProdutos />} />
               <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
-              <Route path="/admin/horarios" element={<AdminGerenciarHorarios />} />
+              <Route path="/admin/horarios" element={<AdminHorarios />} />
+              <Route path="/admin/gerenciar-horarios" element={<AdminGerenciarHorarios />} />
               <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
               <Route path="/admin/despesas" element={<AdminDespesas />} />
               <Route path="/admin/portfolio" element={<AdminPortfolio />} />
