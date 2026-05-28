@@ -57,8 +57,20 @@ export default function AdminServicos() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...values }: { id: string; nome?: string; preco?: number; duracao_minutos?: number; ativo?: boolean; tipo?: string }) => {
-      const { error } = await supabase.from("servicos").update(values).eq("id", id);
+      // Remove undefined para não enviar lixo
+      const clean: Record<string, any> = {};
+      for (const [k, v] of Object.entries(values)) {
+        if (v !== undefined && v !== null) clean[k] = v;
+      }
+      const { data, error } = await supabase
+        .from("servicos")
+        .update(clean)
+        .eq("id", id)
+        .select();
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Nenhum registro foi atualizado. Verifique permissões/login.");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-servicos"] });

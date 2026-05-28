@@ -19,4 +19,19 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+  build: {
+    target: "es2020",
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        // Quebra deps grandes em chunks separados, melhora cache no mobile
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "supabase": ["@supabase/supabase-js"],
+          "tanstack": ["@tanstack/react-query"],
+          "date-fns": ["date-fns"],
+        },
+      },
+    },
+  },
 }));
