@@ -135,11 +135,8 @@ export default function AdminFinanceiro() {
           });
         }
 
-        // 4) Monta items e calcula totais
-        let total = 0;
-        let count = 0;
+        // 4) Monta items
         const items: any[] = agendamentos.map((a: any) => {
-          // Usa a junção quando existir (mesmo se a soma der 0); senão cai no servico_id legado
           const fromJunction = priceMap[a.id];
           const price = fromJunction
             ? fromJunction.total
@@ -149,11 +146,6 @@ export default function AdminFinanceiro() {
               ? fromJunction.names.join(", ")
               : a.servicos?.nome || "Sem serviço";
           const servicoIds = fromJunction?.servicoIds || [];
-
-          if (a.status === "finalizado") {
-            total += price;
-            count += 1;
-          }
 
           return {
             id: a.id,
@@ -168,6 +160,12 @@ export default function AdminFinanceiro() {
             status: a.status,
           };
         });
+
+        // Faturamento bruto = soma de TUDO que aparece no detalhamento do período.
+        // (Para dia/semana/mes a query já filtrou só status=finalizado;
+        //  para historico segue o statusFilter escolhido.)
+        const total = items.reduce((sum, it) => sum + Number(it.valor || 0), 0);
+        const count = items.length;
 
         return { total, count, items, totalDespesas };
       } catch (err: any) {
