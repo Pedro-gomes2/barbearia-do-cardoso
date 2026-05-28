@@ -55,8 +55,8 @@ export default function AgendamentoDados() {
     const nomeCompleto = `${nome.trim()} ${sobrenome.trim()}`;
     setLoading(true);
     try {
-      await createAppointment(nomeCompleto, telefone, date, time, servicos.map((s) => s.id));
-      navigate("/agendamento/sucesso", { state: { nome: nomeCompleto, date, time, servicos } });
+      const { agendamento } = await createAppointment(nomeCompleto, telefone, date, time, servicos.map((s) => s.id));
+      navigate("/agendamento/sucesso", { state: { nome: nomeCompleto, date, time, servicos, agendamentoId: agendamento.id } });
     } catch (err: any) {
       if (err instanceof SlotIndisponivelError) {
         toast({

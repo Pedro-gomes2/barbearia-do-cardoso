@@ -40,7 +40,13 @@ export default function AdminHorarios() {
   const { data: slots = [], isLoading } = useQuery({
     queryKey: ["admin-horarios", data],
     queryFn: async () => {
-      const [{ data: customSlots }, { data: agendados }, { data: bloqueados }] = await Promise.all([
+      const [overrideRes, templateRes, { data: agendados }, { data: bloqueados }] = await Promise.all([
+        supabase
+          .from("horarios_data")
+          .select("horario")
+          .eq("data", data)
+          .eq("ativo", true)
+          .order("horario"),
         supabase
           .from("horarios_customizados")
           .select("horario")
@@ -49,7 +55,7 @@ export default function AdminHorarios() {
           .order("horario"),
         supabase
           .from("agendamentos")
-          .select("id, horario, status, usuarios(nome), agendamento_servicos(servicos(nome)")
+          .select("id, horario, status, usuarios(nome), agendamento_servicos(servicos(nome))")
           .eq("data", data)
           .in("status", ["pendente", "ativo"]),
         supabase
@@ -57,6 +63,10 @@ export default function AdminHorarios() {
           .select("horario, motivo")
           .eq("data", data),
       ]);
+
+      const customSlots = (overrideRes.data && overrideRes.data.length > 0)
+        ? overrideRes.data
+        : (templateRes.data || []);
 
       const agendadosMap: Record<string, { nome: string; servicos: string[]; status: "pendente" | "ativo"; id: string }> = {};
       for (const a of (agendados || []) as any[]) {
@@ -73,8 +83,14 @@ export default function AdminHorarios() {
         (bloqueados || []).map((b: any) => [b.horario, b.motivo || "Bloqueado"])
       );
 
-      return (customSlots || []).map((s) => {
-        const h = s.horario;
+      const allTimes = new Set<string>();
+      (customSlots || []).forEach((s: any) => allTimes.add(s.horario));
+      (agendados || []).forEach((a: any) => allTimes.add(a.horario));
+      (bloqueados || []).forEach((b: any) => allTimes.add(b.horario));
+
+      const sortedTimes = Array.from(allTimes).sort();
+
+      return sortedTimes.map((h) => {
         if (agendadosMap[h]) {
           const a = agendadosMap[h];
           return {

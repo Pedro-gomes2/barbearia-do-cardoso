@@ -16,6 +16,7 @@ import AdminAgenda from "./pages/AdminAgenda";
 import AdminBloqueios from "./pages/AdminBloqueios";
 import AdminServicos from "./pages/AdminServicos";
 import AdminConfiguracoes from "./pages/AdminConfiguracoes";
+import AdminGerenciarHorarios from "./pages/AdminGerenciarHorarios";
 import AdminHorarios from "./pages/AdminHorarios";
 import Produtos from "./pages/Produtos";
 import AdminProdutos from "./pages/AdminProdutos";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/admin/produtos" element={<AdminProdutos />} />
             <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
             <Route path="/admin/horarios" element={<AdminHorarios />} />
+            <Route path="/admin/gerenciar-horarios" element={<AdminGerenciarHorarios />} />
             <Route path="/admin/financeiro" element={<AdminFinanceiro />} />
             <Route path="/admin/despesas" element={<AdminDespesas />} />
             <Route path="/admin/portfolio" element={<AdminPortfolio />} />

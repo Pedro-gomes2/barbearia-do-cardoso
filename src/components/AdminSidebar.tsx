@@ -21,9 +21,9 @@ import { usePendentesCount } from "@/lib/confirmacao-helpers";
 const items = [
   { title: "Dashboard", url: "/admin/dashboard", icon: BarChart3 },
   { title: "Agenda", url: "/admin/agenda", icon: CalendarDays },
+  { title: "Horários", url: "/admin/horarios", icon: Clock },
   { title: "Bloqueios", url: "/admin/bloqueios", icon: Ban },
   { title: "Serviços", url: "/admin/servicos", icon: Wrench },
-  { title: "Horários", url: "/admin/horarios", icon: Clock },
   { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
   { title: "Financeiro", url: "/admin/financeiro", icon: Wallet },
   { title: "Despesas", url: "/admin/despesas", icon: Wallet },

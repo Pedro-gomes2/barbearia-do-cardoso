@@ -86,12 +86,40 @@ function minutesToTime(minutes: number): string {
   return `${h}:${m}:00`;
 }
 
+/**
+ * Retorna a lista de horários (HH:mm:ss) configurados para a data.
+ * Se existir override em `horarios_data`, usa só ele; senão cai no template
+ * semanal de `horarios_customizados`.
+ */
+async function getHorariosDaData(date: string): Promise<string[]> {
+  const { data: override } = await supabase
+    .from("horarios_data")
+    .select("horario")
+    .eq("data", date)
+    .eq("ativo", true)
+    .order("horario");
+
+  if (override && override.length > 0) {
+    return override.map((r: any) => r.horario);
+  }
+
+  const dayOfWeek = new Date(date + "T12:00:00").getDay();
+  const { data: template } = await supabase
+    .from("horarios_customizados")
+    .select("horario")
+    .eq("dia_semana", dayOfWeek)
+    .eq("ativo", true)
+    .order("horario");
+
+  return (template || []).map((r: any) => r.horario);
+}
+
 export async function getAvailableSlots(date: string, requiredMinutes: number = 0) {
   await supabase.rpc("expire_pending_agendamentos");
 
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
-  // Get day config (open hours)
+  // Day config: respeita o flag "ativo" do dia, e usa hora_fim como limite final
   const { data: config } = await supabase
     .from("configuracoes_agenda")
     .select("ativo, hora_inicio, hora_fim")
@@ -102,11 +130,10 @@ export async function getAvailableSlots(date: string, requiredMinutes: number = 
     return [];
   }
 
-  const openMinutes = timeToMinutes(config.hora_inicio);
   const closeMinutes = timeToMinutes(config.hora_fim);
 
-  // Get occupied intervals and blocked slots
-  const [occupiedIntervals, blockedResult] = await Promise.all([
+  const [horarios, occupiedIntervals, blockedResult] = await Promise.all([
+    getHorariosDaData(date),
     getOccupiedIntervals(date),
     supabase.from("bloqueios").select("horario").eq("data", date),
   ]);
@@ -115,25 +142,30 @@ export async function getAvailableSlots(date: string, requiredMinutes: number = 
     (blockedResult.data || []).map((b: any) => b.horario.slice(0, 5))
   );
 
-  // Duration needed: if requiredMinutes is 0 or not provided, show all slots
-  // but mark availability based on single-slot conflicts
-  const duration = requiredMinutes > 0 ? requiredMinutes : SLOT_STEP;
+  // Se o cliente ainda não escolheu serviço, mostra os horários crus marcando
+  // disponibilidade só pelo conflito direto (sem somar duração).
+  const duration = requiredMinutes > 0 ? requiredMinutes : 0;
 
   const slots: { time: string; available: boolean }[] = [];
 
-  for (let minute = openMinutes; minute + duration <= closeMinutes; minute += SLOT_STEP) {
-    const timeStr = minutesToTime(minute);
+  for (const horario of horarios) {
+    const timeStr = horario.length === 5 ? `${horario}:00` : horario;
     const displayStr = timeStr.slice(0, 5);
+    const startMinutes = timeToMinutes(displayStr);
 
-    // Check if this slot's time is blocked
     if (blockedSet.has(displayStr)) {
       slots.push({ time: timeStr, available: false });
       continue;
     }
 
-    // Check if the interval [minute, minute + duration) overlaps with any occupied interval
-    const candidateStart = minute;
-    const candidateEnd = minute + duration;
+    // Estoura o expediente
+    if (duration > 0 && startMinutes + duration > closeMinutes) {
+      slots.push({ time: timeStr, available: false });
+      continue;
+    }
+
+    const candidateStart = startMinutes;
+    const candidateEnd = startMinutes + (duration > 0 ? duration : 1);
     const hasConflict = occupiedIntervals.some(
       (interval) => candidateStart < interval.end && candidateEnd > interval.start
     );

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, CheckCircle2, XCircle, Clock, Save } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MessageCircle, CheckCircle2, XCircle, Clock, Pencil } from "lucide-react";
+import { HorariosDiaSemana } from "@/components/HorariosDiaSemana";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +28,7 @@ export default function AdminAgenda() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const today = format(new Date(), "yyyy-MM-dd");
+  const [ajusteData, setAjusteData] = useState(today);
 
   useEffect(() => {
     supabase.from("configuracoes_agenda").select("*").order("dia_semana").then(({ data }) => {
@@ -100,6 +103,22 @@ export default function AdminAgenda() {
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-heading tracking-wider">AGENDA</h2>
         <p className="text-muted-foreground font-body text-sm">Ative os dias e configure os horários de abertura</p>
+        <div className="pt-2 flex items-end gap-2 justify-center">
+          <div className="space-y-1 text-left">
+            <Label className="text-xs text-muted-foreground">Ajustar dia específico</Label>
+            <Input
+              type="date"
+              value={ajusteData}
+              onChange={(e) => setAjusteData(e.target.value)}
+              className="max-w-[180px]"
+            />
+          </div>
+          <Button asChild size="sm" variant="outline" className="gap-2">
+            <Link to={`/admin/gerenciar-horarios?tab=data&data=${ajusteData}`}>
+              <Pencil className="h-4 w-4" /> Editar
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Lembretes do dia */}
@@ -205,45 +224,31 @@ export default function AdminAgenda() {
               {/* Horários — só aparece quando ativo */}
               {config.ativo && (
                 <div className="px-4 pb-4 border-t border-border/50 pt-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4 items-end">
-                    <div className="space-y-2 flex-1">
-                      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">Horário de Abertura</Label>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                    <div className="space-y-1 flex-1">
+                      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">
+                        Fechamento (limite final dos atendimentos)
+                      </Label>
                       <Input
                         type="time"
-                        value={config.hora_inicio}
-                        onChange={(e) => {
-                          const newConfigs = [...configs];
-                          newConfigs[idx].hora_inicio = e.target.value;
-                          setConfigs(newConfigs);
-                        }}
-                        className="font-heading text-lg"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2 flex-1">
-                      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">Horário de Fechamento</Label>
-                      <Input
-                        type="time"
-                        value={config.hora_fim}
+                        value={config.hora_fim?.slice(0, 5) || ""}
                         onChange={(e) => {
                           const newConfigs = [...configs];
                           newConfigs[idx].hora_fim = e.target.value;
                           setConfigs(newConfigs);
                         }}
-                        className="font-heading text-lg"
+                        className="font-heading max-w-[160px]"
                       />
                     </div>
-
                     <Button
-                      size="lg"
-                      className="w-full sm:w-auto font-heading tracking-widest gap-2"
+                      size="sm"
                       onClick={() => saveConfigMutation.mutate(config)}
                       disabled={saveConfigMutation.isPending}
                     >
-                      <Save className="h-4 w-4" />
-                      SALVAR
+                      Salvar fechamento
                     </Button>
                   </div>
+                  <HorariosDiaSemana diaSemana={config.dia_semana} />
                 </div>
               )}
             </div>

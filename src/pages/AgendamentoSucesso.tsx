@@ -6,7 +6,7 @@ import { CheckCircle, Calendar, Clock, Tag, MessageCircle, AlertCircle, Scissors
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { Servico } from "@/components/ServiceSelector";
-import { buildWhatsappConfirmMessage, buildWhatsappConfirmUrl } from "@/lib/confirmacao-helpers";
+import { buildWhatsappConfirmMessage, buildWhatsappConfirmUrl, confirmAgendamento } from "@/lib/confirmacao-helpers";
 
 const FALLBACK_WHATSAPP = "5521995323454";
 
@@ -14,11 +14,12 @@ export default function AgendamentoSucesso() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { nome, date, time, servicos } = (location.state as {
+  const { nome, date, time, servicos, agendamentoId } = (location.state as {
     nome: string;
     date: string;
     time: string;
     servicos?: Servico[];
+    agendamentoId?: string;
   }) || {};
 
   const [cfg, setCfg] = useState<any>(null);
@@ -78,9 +79,16 @@ export default function AgendamentoSucesso() {
 
   const whatsappUrl = buildWhatsappConfirmUrl(whatsappNumber, messageText);
 
-  const handleWhatsapp = () => {
+  const handleWhatsapp = async () => {
     window.open(whatsappUrl, "_blank");
     setWhatsappEnviado(true);
+    if (agendamentoId) {
+      try {
+        await confirmAgendamento(agendamentoId);
+      } catch {
+        // mesmo se falhar, a mensagem já foi enviada — o admin pode confirmar manualmente
+      }
+    }
   };
 
   return (
@@ -95,18 +103,23 @@ export default function AgendamentoSucesso() {
       <main className="container max-w-lg flex-1 py-12 space-y-6 animate-fade-in">
         <div className="text-center space-y-3">
           <CheckCircle className="h-16 w-16 text-primary mx-auto" />
-          <h2 className="text-4xl">AGENDADO!</h2>
+          <h2 className="text-4xl">{whatsappEnviado ? "CONFIRMADO!" : "AGENDADO!"}</h2>
           <p className="text-muted-foreground font-body text-sm">
-            Atendimento ainda <strong>NÃO confirmado</strong>. Envie a mensagem ao barbeiro pelo WhatsApp em até <strong>30 minutos</strong> para garantir seu horário.
+            {whatsappEnviado
+              ? "Seu horário está confirmado. Te esperamos!"
+              : <>Atendimento ainda <strong>NÃO confirmado</strong>. Envie a mensagem ao barbeiro pelo WhatsApp em até <strong>30 minutos</strong> para garantir seu horário.</>
+            }
           </p>
         </div>
 
-        <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex gap-3 items-start">
-          <AlertCircle className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
-          <p className="font-body text-sm text-yellow-900">
-            Seu horário está <strong>pendente</strong> e expira em 30 minutos se não houver confirmação pelo WhatsApp.
-          </p>
-        </div>
+        {!whatsappEnviado && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex gap-3 items-start">
+            <AlertCircle className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
+            <p className="font-body text-sm text-yellow-900">
+              Seu horário está <strong>pendente</strong> e expira em 30 minutos se não houver confirmação pelo WhatsApp.
+            </p>
+          </div>
+        )}
 
         {/* Resumo */}
         <div className="bg-card rounded-xl p-5 border border-border w-full space-y-3">
@@ -177,7 +190,7 @@ export default function AgendamentoSucesso() {
           <div className="space-y-3 animate-fade-in">
             <div className="bg-green-50 border border-green-300 rounded-xl p-4 text-center">
               <p className="font-body text-sm text-green-800 font-semibold">
-                ✅ Mensagem enviada! Aguarde a confirmação do administrador.
+                ✅ Agendamento confirmado!
               </p>
             </div>
             <Button
