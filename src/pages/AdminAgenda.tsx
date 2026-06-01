@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { confirmAgendamento, cancelAgendamentoAdmin } from "@/lib/confirmacao-helpers";
+import { timeToMinutes, formatTimeDisplay } from "@/lib/time-utils";
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -24,17 +25,22 @@ interface DayConfig {
 }
 
 export default function AdminAgenda() {
-  const [configs, setConfigs] = useState<DayConfig[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const today = format(new Date(), "yyyy-MM-dd");
   const [ajusteData, setAjusteData] = useState(today);
 
-  useEffect(() => {
-    supabase.from("configuracoes_agenda").select("*").order("dia_semana").then(({ data }) => {
-      if (data) setConfigs(data as any);
-    });
-  }, []);
+  const { data: configs = [], isLoading: configsLoading } = useQuery({
+    queryKey: ["admin-configuracoes-agenda"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configuracoes_agenda")
+        .select("*")
+        .order("dia_semana");
+      if (error) throw error;
+      return (data || []) as DayConfig[];
+    },
+  });
 
   const { data: agendamentosHoje = [] } = useQuery({
     queryKey: ["agendamentos-hoje", today],
@@ -53,24 +59,32 @@ export default function AdminAgenda() {
     },
   });
 
-  const toggleDia = async (idx: number, ativo: boolean) => {
-    const config = configs[idx];
-    setConfigs((prev) => prev.map((c, i) => (i === idx ? { ...c, ativo } : c)));
-    if (config.id) {
+  const toggleDia = useMutation({
+    mutationFn: async ({ config, newActive }: { config: DayConfig; newActive: boolean }) => {
+      if (!config.id) return;
       const { error } = await supabase
         .from("configuracoes_agenda")
-        .update({ ativo } as any)
+        .update({ ativo: newActive } as any)
         .eq("id", config.id);
-      if (error) {
-        toast({ title: "Erro ao salvar", variant: "destructive" });
-        setConfigs((prev) => prev.map((c, i) => (i === idx ? { ...c, ativo: !ativo } : c)));
-      }
-    }
-  };
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-configuracoes-agenda"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao salvar", variant: "destructive" });
+    },
+  });
 
   const saveConfigMutation = useMutation({
     mutationFn: async (config: DayConfig) => {
       if (!config.id) return;
+      // Validar que hora_fim > hora_inicio
+      const inicioMin = timeToMinutes(config.hora_inicio);
+      const fimMin = timeToMinutes(config.hora_fim);
+      if (fimMin <= inicioMin) {
+        throw new Error("Hora de fechamento deve ser posterior à de abertura");
+      }
       const { error } = await supabase
         .from("configuracoes_agenda")
         .update({ hora_inicio: config.hora_inicio, hora_fim: config.hora_fim } as any)
@@ -79,6 +93,7 @@ export default function AdminAgenda() {
     },
     onSuccess: () => {
       toast({ title: "Configurações salvas!" });
+      queryClient.invalidateQueries({ queryKey: ["admin-configuracoes-agenda"] });
     },
     onError: (err: any) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -189,72 +204,96 @@ export default function AdminAgenda() {
       </div>
 
       {/* Dias da semana */}
+      {configsLoading ? (
+        <p className="text-center text-muted-foreground py-8">Carregando configurações...</p>
+      ) : (
       <div className="space-y-3">
-        {configs.map((config, idx) => {
+        {configs.map((config) => {
+          const configFromQuery = configs.find(c => c.dia_semana === config.dia_semana);
+          const currentConfig = configFromQuery || config;
+
           return (
             <div
               key={config.dia_semana}
               className={`rounded-xl border transition-all ${
-                config.ativo
+                currentConfig.ativo
                   ? "bg-card border-primary/40"
                   : "bg-muted/30 border-border opacity-70"
               }`}
             >
               {/* Cabeçalho do dia — clica para ativar/desativar */}
               <button
-                onClick={() => toggleDia(idx, !config.ativo)}
+                onClick={() => toggleDia.mutate({ config: currentConfig, newActive: !currentConfig.ativo })}
                 className="w-full flex items-center justify-between p-4 text-left focus:outline-none"
               >
                 <div className="flex items-center gap-3">
-                  {config.ativo
+                  {currentConfig.ativo
                     ? <CheckCircle2 className="h-5 w-5 text-primary" />
                     : <XCircle className="h-5 w-5 text-muted-foreground" />
                   }
-                  <span className="font-heading text-xl">{DAYS[config.dia_semana]}</span>
+                  <span className="font-heading text-xl">{DAYS[currentConfig.dia_semana]}</span>
                 </div>
                 <span className={`font-body text-xs font-semibold px-2 py-1 rounded-full ${
-                  config.ativo
+                  currentConfig.ativo
                     ? "bg-primary/10 text-primary"
                     : "bg-muted text-muted-foreground"
                 }`}>
-                  {config.ativo ? "ATIVO" : "INATIVO"}
+                  {currentConfig.ativo ? "ATIVO" : "INATIVO"}
                 </span>
               </button>
 
               {/* Horários — só aparece quando ativo */}
-              {config.ativo && (
+              {currentConfig.ativo && (
                 <div className="px-4 pb-4 border-t border-border/50 pt-4 space-y-4">
                   <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                    <div className="space-y-1 flex-1">
+                      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">
+                        Abertura (início dos atendimentos)
+                      </Label>
+                      <Input
+                        type="time"
+                        value={currentConfig.hora_inicio?.slice(0, 5) || ""}
+                        onChange={(e) => {
+                          const updated = { ...currentConfig, hora_inicio: e.target.value + ":00" };
+                          queryClient.setQueryData(["admin-configuracoes-agenda"],
+                            (configs: DayConfig[]) => configs.map(c => c.id === currentConfig.id ? updated : c)
+                          );
+                        }}
+                        className="font-heading max-w-[160px]"
+                      />
+                    </div>
                     <div className="space-y-1 flex-1">
                       <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">
                         Fechamento (limite final dos atendimentos)
                       </Label>
                       <Input
                         type="time"
-                        value={config.hora_fim?.slice(0, 5) || ""}
+                        value={currentConfig.hora_fim?.slice(0, 5) || ""}
                         onChange={(e) => {
-                          const newConfigs = [...configs];
-                          newConfigs[idx].hora_fim = e.target.value;
-                          setConfigs(newConfigs);
+                          const updated = { ...currentConfig, hora_fim: e.target.value + ":00" };
+                          queryClient.setQueryData(["admin-configuracoes-agenda"],
+                            (configs: DayConfig[]) => configs.map(c => c.id === currentConfig.id ? updated : c)
+                          );
                         }}
                         className="font-heading max-w-[160px]"
                       />
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => saveConfigMutation.mutate(config)}
+                      onClick={() => saveConfigMutation.mutate(currentConfig)}
                       disabled={saveConfigMutation.isPending}
                     >
-                      Salvar fechamento
+                      Salvar horários
                     </Button>
                   </div>
-                  <HorariosDiaSemana diaSemana={config.dia_semana} />
+                  <HorariosDiaSemana diaSemana={currentConfig.dia_semana} />
                 </div>
               )}
             </div>
           );
         })}
       </div>
+      )}
     </div>
   );
 }

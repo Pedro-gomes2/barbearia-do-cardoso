@@ -13,15 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-
-function normalizaHora(input: string): string | null {
-  const m = input.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return null;
-  const h = Number(m[1]);
-  const min = Number(m[2]);
-  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`;
-}
+import { normalizeTimeInput, minutesToTime, timeToMinutes, formatTimeDisplay } from "@/lib/time-utils";
 
 export function HorariosDiaSemana({ diaSemana }: { diaSemana: number }) {
   const [novoHorario, setNovoHorario] = useState("");
@@ -63,21 +55,17 @@ export function HorariosDiaSemana({ diaSemana }: { diaSemana: number }) {
 
   const gerarMut = useMutation({
     mutationFn: async () => {
-      const ini = normalizaHora(gerarInicio);
-      const fim = normalizaHora(gerarFim);
+      const ini = normalizeTimeInput(gerarInicio);
+      const fim = normalizeTimeInput(gerarFim);
       if (!ini || !fim) throw new Error("Horários inválidos");
-      const [hi, mi] = ini.split(":").map(Number);
-      const [hf, mf] = fim.split(":").map(Number);
-      const startMin = hi * 60 + mi;
-      const endMin = hf * 60 + mf;
+      const startMin = timeToMinutes(ini);
+      const endMin = timeToMinutes(fim);
       if (gerarIntervalo < 5 || gerarIntervalo > 240) throw new Error("Intervalo entre 5 e 240");
       if (endMin <= startMin) throw new Error("Fim precisa ser depois do início");
 
       const lista: string[] = [];
       for (let m = startMin; m <= endMin; m += gerarIntervalo) {
-        const h = Math.floor(m / 60).toString().padStart(2, "0");
-        const mm = (m % 60).toString().padStart(2, "0");
-        lista.push(`${h}:${mm}:00`);
+        lista.push(minutesToTime(m));
       }
 
       const rows = lista.map((horario) => ({ dia_semana: diaSemana, horario, ativo: true }));
@@ -106,7 +94,7 @@ export function HorariosDiaSemana({ diaSemana }: { diaSemana: number }) {
   });
 
   const handleAdd = () => {
-    const norm = normalizaHora(novoHorario);
+    const norm = normalizeTimeInput(novoHorario);
     if (!norm) {
       toast({ title: "Formato inválido", description: "Use HH:MM (ex: 08:40)", variant: "destructive" });
       return;
@@ -196,7 +184,7 @@ export function HorariosDiaSemana({ diaSemana }: { diaSemana: number }) {
                 key={h.id}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20"
               >
-                <span className="font-heading text-sm">{h.horario.slice(0, 5)}</span>
+                <span className="font-heading text-sm">{formatTimeDisplay(h.horario)}</span>
                 <button
                   type="button"
                   onClick={() => removeMut.mutate(h.id)}

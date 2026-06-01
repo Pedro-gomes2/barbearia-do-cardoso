@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { normalizeTimeInput, formatTimeDisplay } from "@/lib/time-utils";
 
 const DIAS_SEMANA = [
   { val: 0, label: "Domingo" },
@@ -20,19 +21,6 @@ const DIAS_SEMANA = [
   { val: 5, label: "Sexta" },
   { val: 6, label: "Sábado" },
 ];
-
-function normalizaHora(input: string): string | null {
-  const m = input.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return null;
-  const h = Number(m[1]);
-  const min = Number(m[2]);
-  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`;
-}
-
-function exibeHora(h: string): string {
-  return h.slice(0, 5);
-}
 
 export default function AdminGerenciarHorarios() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -144,7 +132,7 @@ export default function AdminGerenciarHorarios() {
   });
 
   const handleAdd = () => {
-    const norm = normalizaHora(novoHorario);
+    const norm = normalizeTimeInput(novoHorario);
     if (!norm) {
       toast({ title: "Formato inválido", description: "Use HH:MM (ex: 08:40)", variant: "destructive" });
       return;
@@ -265,7 +253,7 @@ export default function AdminGerenciarHorarios() {
                 key={h.id}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20"
               >
-                <span className="font-heading text-sm">{exibeHora(h.horario)}</span>
+                <span className="font-heading text-sm">{formatTimeDisplay(h.horario)}</span>
                 <button
                   type="button"
                   onClick={() => onRemove(h.id)}

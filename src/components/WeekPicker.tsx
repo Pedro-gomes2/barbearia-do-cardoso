@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getDayOfWeek } from "@/lib/time-utils";
 
 interface WeekPickerProps {
   selected?: Date;
@@ -26,7 +27,29 @@ export function WeekPicker({ selected, onSelect, disablePast = true }: WeekPicke
     }
   });
 
+  const { data: horariosDisponibilidade = {} } = useQuery({
+    queryKey: ["horarios-disponibilidade"],
+    queryFn: async () => {
+      const { data: template } = await supabase
+        .from("horarios_customizados")
+        .select("dia_semana")
+        .eq("ativo", true);
+
+      const daysWithHours = new Set((template || []).map((h: any) => h.dia_semana));
+      const result: Record<number, boolean> = {};
+      for (let i = 0; i < 7; i++) {
+        result[i] = daysWithHours.has(i);
+      }
+      return result;
+    }
+  });
+
   const inactiveDays = new Set(config.filter(c => !c.ativo).map(c => c.dia_semana));
+  const daysWithoutHours = new Set(
+    Object.entries(horariosDisponibilidade)
+      .filter(([_, hasHours]) => !hasHours)
+      .map(([day]) => Number(day))
+  );
 
   return (
     <div className="space-y-3">
@@ -45,10 +68,11 @@ export function WeekPicker({ selected, onSelect, disablePast = true }: WeekPicke
         {days.map((d) => {
           const dayOfWeek = d.getDay();
           const isInactive = inactiveDays.has(dayOfWeek);
+          const noHours = daysWithoutHours.has(dayOfWeek);
           const isPast = disablePast && d < today;
           const isSelected = selected && isSameDay(d, selected);
           const isToday = isSameDay(d, today);
-          const isDisabled = isPast || isInactive;
+          const isDisabled = isPast || isInactive || noHours;
 
           return (
             <button

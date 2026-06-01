@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { createEncaixe, replaceAgendamentoServicos, getFavoritosCliente, saveFavoritosCliente } from "@/lib/admin-horarios-helpers";
 import { SlotIndisponivelError } from "@/lib/supabase-helpers";
+import { getDayOfWeek, timeToMinutes, formatTimeDisplay } from "@/lib/time-utils";
 
 export default function AdminHorarios() {
   const [data, setData] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -35,7 +36,7 @@ export default function AdminHorarios() {
 
   const queryClient = useQueryClient();
 
-  const dayOfWeek = new Date(data + "T12:00:00").getDay();
+  const dayOfWeek = getDayOfWeek(data);
 
   const { data: slots = [], isLoading } = useQuery({
     queryKey: ["admin-horarios", data],

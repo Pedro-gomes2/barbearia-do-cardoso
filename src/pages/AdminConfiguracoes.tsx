@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, parse, isAfter, isBefore } from "date-fns";
+import { format, parse, isAfter, isBefore, isSameOrAfter, isSameOrBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 function fmtDate(iso: string) {

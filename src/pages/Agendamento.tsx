@@ -18,6 +18,7 @@ function isAgendaAberta(inicio: string | null, fim: string | null): boolean {
   const d0 = parse(inicio, "yyyy-MM-dd", new Date());
   const d1 = parse(fim, "yyyy-MM-dd", new Date());
   d1.setHours(23, 59, 59);
+  // Equivalente: !isBefore(hoje, d0) && !isAfter(hoje, d1) = hoje >= d0 && hoje <= d1
   return !isBefore(hoje, d0) && !isAfter(hoje, d1);
 }
 

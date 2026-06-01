@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addMinutes, parse, format, isBefore } from "date-fns";
 import { normalizarTelefone } from "@/lib/telefone";
+import { timeToMinutes, minutesToTime, getDayOfWeek, getTodayString, normalizeTimeInput } from "@/lib/time-utils";
 
 export const SLOT_UNIQUE_INDEX = "agendamentos_unique_slot_active";
 export const SLOT_STEP = 15; // minutes between each slot (minimum service duration)
@@ -70,23 +71,6 @@ async function getOccupiedIntervals(date: string): Promise<{ start: number; end:
 }
 
 /**
- * Helper: convert "HH:mm" string to minutes since midnight
- */
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-/**
- * Helper: convert minutes since midnight to "HH:mm:ss" string
- */
-function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60).toString().padStart(2, "0");
-  const m = (minutes % 60).toString().padStart(2, "0");
-  return `${h}:${m}:00`;
-}
-
-/**
  * Retorna a lista de horários (HH:mm:ss) configurados para a data.
  * Se existir override em `horarios_data`, usa só ele; senão cai no template
  * semanal de `horarios_customizados`.
@@ -103,7 +87,7 @@ async function getHorariosDaData(date: string): Promise<string[]> {
     return override.map((r: any) => r.horario);
   }
 
-  const dayOfWeek = new Date(date + "T12:00:00").getDay();
+  const dayOfWeek = getDayOfWeek(date);
   const { data: template } = await supabase
     .from("horarios_customizados")
     .select("horario")
@@ -117,7 +101,7 @@ async function getHorariosDaData(date: string): Promise<string[]> {
 export async function getAvailableSlots(date: string, requiredMinutes: number = 0) {
   await supabase.rpc("expire_pending_agendamentos");
 
-  const dayOfWeek = new Date(date + "T12:00:00").getDay();
+  const dayOfWeek = getDayOfWeek(date);
 
   // Day config: respeita o flag "ativo" do dia, e usa hora_fim como limite final
   const { data: config } = await supabase
@@ -142,8 +126,6 @@ export async function getAvailableSlots(date: string, requiredMinutes: number = 
     (blockedResult.data || []).map((b: any) => b.horario.slice(0, 5))
   );
 
-  // Se o cliente ainda não escolheu serviço, mostra os horários crus marcando
-  // disponibilidade só pelo conflito direto (sem somar duração).
   const duration = requiredMinutes > 0 ? requiredMinutes : 0;
 
   const slots: { time: string; available: boolean }[] = [];
@@ -158,7 +140,7 @@ export async function getAvailableSlots(date: string, requiredMinutes: number = 
       continue;
     }
 
-    // Estoura o expediente
+    // Verifica se horário ultrapassa hora_fim
     if (duration > 0 && startMinutes + duration > closeMinutes) {
       slots.push({ time: timeStr, available: false });
       continue;
