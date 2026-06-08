@@ -64,7 +64,7 @@ export function WeekPicker({ selected, onSelect, disablePast = true }: WeekPicke
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
-      <div className="grid grid-cols-7 gap-1.5">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-1">
         {days.map((d) => {
           const dayOfWeek = d.getDay();
           const isInactive = inactiveDays.has(dayOfWeek);
@@ -80,7 +80,7 @@ export function WeekPicker({ selected, onSelect, disablePast = true }: WeekPicke
               type="button"
               disabled={isDisabled}
               onClick={() => onSelect(d)}
-              className={`flex flex-col items-center gap-0.5 p-2 rounded-lg border transition-all ${
+              className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all text-center ${
                 isSelected
                   ? "bg-primary text-primary-foreground border-primary"
                   : isDisabled
@@ -88,10 +88,10 @@ export function WeekPicker({ selected, onSelect, disablePast = true }: WeekPicke
                   : "border-border bg-card hover:border-primary/60"
               }`}
             >
-              <span className="text-[10px] font-body uppercase tracking-wider opacity-80">
-                {format(d, "EEEEEE", { locale: ptBR })}
+              <span className="text-[8px] sm:text-[9px] md:text-[10px] font-body uppercase tracking-wider opacity-80 line-clamp-1">
+                {format(d, "EEE", { locale: ptBR })}
               </span>
-              <span className={`font-heading text-lg ${isToday && !isSelected ? "text-primary" : ""}`}>
+              <span className={`font-heading text-sm sm:text-base md:text-lg ${isToday && !isSelected ? "text-primary" : ""}`}>
                 {format(d, "dd")}
               </span>
             </button>

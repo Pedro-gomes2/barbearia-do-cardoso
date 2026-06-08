@@ -275,17 +275,17 @@ export default function AdminHorarios() {
 
       {/* Resumo */}
       {slots.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
-            <p className="font-heading text-2xl text-green-700">{livres}</p>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="bg-green-50 border border-green-200 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
+            <p className="font-heading text-xl sm:text-2xl text-green-700">{livres}</p>
             <p className="font-body text-xs text-green-600">Vagos</p>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
-            <p className="font-heading text-2xl text-red-700">{ocupados}</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
+            <p className="font-heading text-xl sm:text-2xl text-red-700">{ocupados}</p>
             <p className="font-body text-xs text-red-600">Ocupados</p>
           </div>
-          <div className="bg-muted border border-border rounded-xl p-3 text-center">
-            <p className="font-heading text-2xl text-muted-foreground">{bloqueados}</p>
+          <div className="bg-muted border border-border rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
+            <p className="font-heading text-xl sm:text-2xl text-muted-foreground">{bloqueados}</p>
             <p className="font-body text-xs text-muted-foreground">Bloqueados</p>
           </div>
         </div>
@@ -546,16 +546,16 @@ export default function AdminHorarios() {
       ) : (
         <div className="flex flex-col gap-2">
           {slots.filter((s) => s.status !== "bloqueado").map((s) => (
-            <div key={s.horario} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-xl border ${s.status === "livre" ? "bg-green-50 border-green-200" : s.status === "ocupado" && s.agendamentoStatus === "pendente" ? "bg-yellow-50 border-yellow-300" : s.status === "ocupado" ? "bg-red-50 border-red-200" : "bg-muted border-border opacity-60"}`}>
+            <div key={s.horario} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl border ${s.status === "livre" ? "bg-green-50 border-green-200" : s.status === "ocupado" && s.agendamentoStatus === "pendente" ? "bg-yellow-50 border-yellow-300" : s.status === "ocupado" ? "bg-red-50 border-red-200" : "bg-muted border-border opacity-60"}`}>
               {/* Esquerda: hora + status */}
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 {s.status === "livre" ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                  <CheckCircle2 className="h-4 sm:h-5 w-4 sm:w-5 text-green-600 shrink-0" />
                 ) : (
-                  <XCircle className={`h-5 w-5 shrink-0 ${s.agendamentoStatus === "pendente" ? "text-yellow-600" : "text-red-500"}`} />
+                  <XCircle className={`h-4 sm:h-5 w-4 sm:w-5 shrink-0 ${s.agendamentoStatus === "pendente" ? "text-yellow-600" : "text-red-500"}`} />
                 )}
-                <span className="font-heading text-xl shrink-0">{s.horario.slice(0, 5)}</span>
-                <span className={`font-body text-[10px] sm:text-xs px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${s.status === "livre" ? "bg-green-100 text-green-700" : s.status === "ocupado" && s.agendamentoStatus === "pendente" ? "bg-yellow-100 text-yellow-800" : s.status === "ocupado" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>
+                <span className="font-heading text-base sm:text-xl shrink-0">{s.horario.slice(0, 5)}</span>
+                <span className={`font-body text-[8px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${s.status === "livre" ? "bg-green-100 text-green-700" : s.status === "ocupado" && s.agendamentoStatus === "pendente" ? "bg-yellow-100 text-yellow-800" : s.status === "ocupado" ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>
                   {s.status === "livre"
                     ? "VAGO"
                     : s.status === "ocupado" && s.agendamentoStatus === "pendente"
@@ -567,21 +567,25 @@ export default function AdminHorarios() {
               </div>
 
               {/* Direita: info + ações */}
-              <div className="flex flex-col items-start sm:items-end gap-1 min-w-0 w-full sm:w-auto">
-                {s.info && (
-                  <p className="font-body text-xs text-muted-foreground truncate max-w-full">{s.info}</p>
-                )}
-                {s.servicos && s.servicos.length > 0 && (
-                  <p className="font-body text-xs text-primary truncate max-w-full">{s.servicos.join(", ")}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-1 sm:gap-2 min-w-0 w-full sm:w-auto">
+                {(s.info || s.servicos?.length > 0) && (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 min-w-0 text-right sm:text-right">
+                    {s.info && (
+                      <p className="font-body text-[10px] sm:text-xs text-muted-foreground truncate max-w-full">{s.info}</p>
+                    )}
+                    {s.servicos && s.servicos.length > 0 && (
+                      <p className="font-body text-[10px] sm:text-xs text-primary truncate max-w-full">{s.servicos.join(", ")}</p>
+                    )}
+                  </div>
                 )}
                 {s.status === "livre" && (
-                  <Button size="sm" className="whitespace-nowrap" onClick={() => { setSelectedCliente(null); setSelectedServicoIds([]); setSelectedSlot(s); setOpenEncaixeDialog(true); }}>
+                  <Button size="sm" className="whitespace-nowrap text-xs" onClick={() => { setSelectedCliente(null); setSelectedServicoIds([]); setSelectedSlot(s); setOpenEncaixeDialog(true); }}>
                     Encaixe
                   </Button>
                 )}
                 {s.status === "ocupado" && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" className="whitespace-nowrap" onClick={() => {
+                  <div className="flex gap-1 sm:gap-2 flex-wrap">
+                    <Button size="sm" variant="ghost" className="whitespace-nowrap text-xs" onClick={() => {
                       if (!s.agendamentoId) return toast({ title: 'Erro', description: 'Agendamento não encontrado', variant: 'destructive' });
                       setSelectedAgendamentoId(s.agendamentoId);
                       setSelectedSlot(s);
@@ -589,7 +593,7 @@ export default function AdminHorarios() {
                     }}>
                       Remover
                     </Button>
-                    <Button size="sm" className="whitespace-nowrap" onClick={() => {
+                    <Button size="sm" className="whitespace-nowrap text-xs" onClick={() => {
                       if (!s.agendamentoId) return toast({ title: 'Erro', description: 'Agendamento não encontrado', variant: 'destructive' });
                       setSelectedAgendamentoId(s.agendamentoId);
                       setSelectedSlot(s);

@@ -237,15 +237,15 @@ export default function AdminDashboard() {
   return (
     <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
           { label: "HOJE", value: stats?.day ?? 0 },
           { label: "SEMANA", value: stats?.week ?? 0 },
           { label: "MÊS", value: stats?.month ?? 0 },
         ].map((s) => (
-          <div key={s.label} className="bg-card rounded-xl p-4 border border-border text-center">
-            <p className="text-3xl font-heading text-primary">{s.value}</p>
-            <p className="text-xs text-muted-foreground font-body mt-1">{s.label}</p>
+          <div key={s.label} className="bg-card rounded-lg sm:rounded-xl p-2 sm:p-4 border border-border text-center">
+            <p className="text-2xl sm:text-3xl font-heading text-primary">{s.value}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground font-body mt-1">{s.label}</p>
           </div>
         ))}
       </div>
@@ -317,24 +317,24 @@ export default function AdminDashboard() {
 
         {/* Filters bar */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
-          <div className="flex items-center gap-2 flex-1">
-            <Button variant="outline" size="icon" onClick={navPrev}><ChevronLeft className="h-4 w-4" /></Button>
-            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 flex-1 justify-center">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              <span className="font-heading tracking-wider text-sm">{headerLabel.toUpperCase()}</span>
+          <div className="flex items-center gap-1 sm:gap-2 flex-1">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={navPrev}><ChevronLeft className="h-3 sm:h-4 w-3 sm:w-4" /></Button>
+            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 flex-1 justify-center min-w-0">
+              <CalendarDays className="h-3 sm:h-4 w-3 sm:w-4 text-primary shrink-0" />
+              <span className="font-heading tracking-wider text-[10px] sm:text-sm truncate">{headerLabel.toUpperCase()}</span>
             </div>
-            <Button variant="outline" size="icon" onClick={navNext}><ChevronRight className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="sm" onClick={() => setRefDate(new Date())} className="font-heading">HOJE</Button>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={navNext}><ChevronRight className="h-3 sm:h-4 w-3 sm:w-4" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => setRefDate(new Date())} className="font-heading text-[10px] sm:text-sm h-8 sm:h-10">HOJE</Button>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 mt-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome..." className="pl-9" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 sm:h-4 w-3 sm:w-4 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome..." className="pl-8 sm:pl-9 text-xs sm:text-sm h-8 sm:h-10" />
           </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-            <SelectTrigger className="sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="sm:w-44 h-8 sm:h-10 text-xs sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="ativo">Ativos</SelectItem>
@@ -352,22 +352,22 @@ export default function AdminDashboard() {
         </TabsContent>
 
         <TabsContent value="semana" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
             {weekDays.map((d) => {
               const dayApts = filtered.filter((a: any) => isSameDay(parse(a.data, "yyyy-MM-dd", new Date()), d));
               return (
-                <div key={d.toISOString()} className="bg-card border border-border rounded-lg p-2 min-h-[180px]">
-                  <p className="font-heading text-center text-sm tracking-wider mb-2">
-                    {format(d, "EEE dd", { locale: ptBR }).toUpperCase()}
+                <div key={d.toISOString()} className="bg-card border border-border rounded-lg p-2 min-h-[140px] sm:min-h-[160px] lg:min-h-[180px]">
+                  <p className="font-heading text-center text-[10px] sm:text-xs lg:text-sm tracking-wider mb-2 line-clamp-2">
+                    {format(d, "EEE", { locale: ptBR }).toUpperCase()} {format(d, "dd")}
                   </p>
                   <div className="space-y-1">
                     {dayApts.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/60 text-center py-4">—</p>
+                      <p className="text-[10px] text-muted-foreground/60 text-center py-4">—</p>
                     ) : (
                       dayApts.map((a: any) => (
-                        <div key={a.id} className={`text-xs bg-primary/10 border border-primary/30 rounded p-1.5 ${a.status !== "ativo" ? "opacity-50" : ""}`}>
+                        <div key={a.id} className={`text-[10px] sm:text-xs bg-primary/10 border border-primary/30 rounded p-1 sm:p-1.5 ${a.status !== "ativo" ? "opacity-50" : ""}`}>
                           <p className="font-heading text-primary">{a.horario.slice(0, 5)}</p>
-                          <p className="font-body truncate">{a.usuarios?.nome}</p>
+                          <p className="font-body truncate text-[8px] sm:text-[10px]">{a.usuarios?.nome}</p>
                         </div>
                       ))
                     )}

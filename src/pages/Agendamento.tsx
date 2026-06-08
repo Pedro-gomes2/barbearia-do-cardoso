@@ -87,17 +87,17 @@ export default function Agendamento() {
         </div>
       </header>
 
-      <main className="container max-w-lg py-8 space-y-8 animate-fade-in">
-        <div className="pt-4 pb-8 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="font-heading tracking-widest text-xs">
-            <ArrowLeft className="h-4 w-4 mr-2" /> VOLTAR
+      <main className="container max-w-lg py-4 sm:py-8 px-3 sm:px-4 space-y-6 sm:space-y-8 animate-fade-in">
+        <div className="pt-2 sm:pt-4 pb-4 sm:pb-8 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="font-heading tracking-widest text-[10px] sm:text-xs h-auto py-1">
+            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> VOLTAR
           </Button>
-          <Home className="h-5 w-5 text-muted-foreground cursor-pointer" onClick={() => navigate("/")} />
+          <Home className="h-4 sm:h-5 w-4 sm:w-5 text-muted-foreground cursor-pointer" onClick={() => navigate("/")} />
         </div>
 
         <div className="text-center space-y-2">
-          <h2 className="text-4xl">AGENDE SEU HORÁRIO</h2>
-          <p className="text-muted-foreground">Escolha a data, serviço e horário</p>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading tracking-wider">AGENDE SEU HORÁRIO</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground font-body">Escolha a data, serviço e horário</p>
         </div>
 
         {cfgLoading ? (
@@ -113,10 +113,10 @@ export default function Agendamento() {
         ) : (
           <>
             {/* 1. Calendário */}
-            <div className="bg-card rounded-xl p-4 border border-border">
-              <div className="flex items-center gap-2 mb-4 text-primary">
-                <CalendarIcon className="h-5 w-5" />
-                <span className="font-semibold text-sm uppercase tracking-wide font-body">Selecione a data</span>
+            <div className="bg-card rounded-lg sm:rounded-xl p-3 sm:p-4 border border-border">
+              <div className="flex items-center gap-2 mb-3 sm:mb-4 text-primary">
+                <CalendarIcon className="h-4 sm:h-5 w-4 sm:w-5" />
+                <span className="font-semibold text-xs sm:text-sm uppercase tracking-wide font-body">Selecione a data</span>
               </div>
               <WeekPicker
                 selected={date}
@@ -130,15 +130,15 @@ export default function Agendamento() {
 
             {/* 2. Serviços */}
             {date && (
-              <div className="bg-card rounded-xl p-4 border border-border animate-fade-in">
-                <div className="flex items-center justify-between mb-4">
+              <div className="bg-card rounded-lg sm:rounded-xl p-3 sm:p-4 border border-border animate-fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
                   <div className="flex items-center gap-2 text-primary">
-                    <Scissors className="h-5 w-5" />
-                    <span className="font-semibold text-sm uppercase tracking-wide font-body">Escolha os serviços</span>
+                    <Scissors className="h-4 sm:h-5 w-4 sm:w-5" />
+                    <span className="font-semibold text-xs sm:text-sm uppercase tracking-wide font-body">Escolha os serviços</span>
                   </div>
                   {servicos.length > 0 && (
                     <div className="text-right">
-                      <span className="text-primary font-heading text-lg">
+                      <span className="text-primary font-heading text-base sm:text-lg">
                         R$ {totalPrice.toFixed(2).replace(".", ",")}
                       </span>
                       <p className="text-[10px] text-muted-foreground font-body">
@@ -153,34 +153,34 @@ export default function Agendamento() {
 
             {/* 3. Horários — caixa expansível */}
             {dateStr && servicos.length > 0 && (
-              <div className="bg-card rounded-xl border border-border animate-fade-in overflow-hidden">
+              <div className="bg-card rounded-lg sm:rounded-xl border border-border animate-fade-in overflow-hidden">
                 {/* Botão para abrir/fechar */}
                 <button
                   onClick={() => setSlotsAberto((v) => !v)}
-                  className="w-full flex items-center justify-between p-4 text-left"
+                  className="w-full flex items-center justify-between p-3 sm:p-4 text-left gap-2"
                 >
-                  <div className="flex items-center gap-2 text-primary">
-                    <Clock className="h-5 w-5" />
-                    <span className="font-semibold text-sm uppercase tracking-wide font-body">
+                  <div className="flex items-center gap-2 text-primary min-w-0">
+                    <Clock className="h-4 sm:h-5 w-4 sm:w-5 shrink-0" />
+                    <span className="font-semibold text-xs sm:text-sm uppercase tracking-wide font-body truncate">
                       {selectedTime
-                        ? `Horário selecionado: ${selectedTime.slice(0, 5)}`
-                        : `Horários — ${date && format(date, "dd 'de' MMMM", { locale: ptBR })}`}
+                        ? `Horário: ${selectedTime.slice(0, 5)}`
+                        : `Horários — ${date && format(date, "dd 'de' MMM", { locale: ptBR })}`}
                     </span>
                   </div>
                   {slotsAberto
-                    ? <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                    : <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    ? <ChevronUp className="h-4 sm:h-5 w-4 sm:w-5 text-muted-foreground shrink-0" />
+                    : <ChevronDown className="h-4 sm:h-5 w-4 sm:w-5 text-muted-foreground shrink-0" />
                   }
                 </button>
 
                 {/* Lista de horários */}
                 {slotsAberto && (
-                  <div className="px-4 pb-4 border-t border-border">
+                  <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-border">
                     <div className="pt-3">
                       {slotsLoading ? (
-                        <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+                        <div className="text-center py-6 sm:py-8 text-muted-foreground text-sm">Carregando...</div>
                       ) : slots.length === 0 ? (
-                        <p className="text-center py-6 text-muted-foreground font-body text-sm">
+                        <p className="text-center py-4 sm:py-6 text-muted-foreground font-body text-xs sm:text-sm">
                           Nenhum horário disponível para este dia.
                         </p>
                       ) : (
@@ -202,7 +202,7 @@ export default function Agendamento() {
             {selectedTime && servicos.length > 0 && (
               <Button
                 onClick={handleContinue}
-                className="w-full py-6 text-lg font-heading tracking-widest animate-fade-in"
+                className="w-full py-4 sm:py-6 text-sm sm:text-lg font-heading tracking-widest animate-fade-in"
                 size="lg"
               >
                 CONTINUAR

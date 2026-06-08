@@ -164,7 +164,7 @@ export default function AdminGerenciarHorarios() {
         <TabsContent value="semanal" className="space-y-4 pt-4">
           <div className="space-y-1">
             <Label>Dia da semana</Label>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-1.5 sm:gap-2">
               {DIAS_SEMANA.map((d) => (
                 <Button
                   key={d.val}
@@ -172,8 +172,10 @@ export default function AdminGerenciarHorarios() {
                   size="sm"
                   variant={diaSemana === d.val ? "default" : "outline"}
                   onClick={() => setDiaSemana(d.val)}
+                  className="text-xs sm:text-sm h-auto py-2"
                 >
-                  {d.label.slice(0, 3)}
+                  <span className="hidden sm:inline">{d.label.slice(0, 3)}</span>
+                  <span className="sm:hidden">{d.label.slice(0, 1).toUpperCase()}</span>
                 </Button>
               ))}
             </div>

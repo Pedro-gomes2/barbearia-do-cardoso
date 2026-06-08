@@ -108,7 +108,7 @@ export function HorariosDiaSemana({ diaSemana }: { diaSemana: number }) {
         <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">
           Adicionar horário
         </Label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input
             type="time"
             value={novoHorario}
@@ -119,12 +119,12 @@ export function HorariosDiaSemana({ diaSemana }: { diaSemana: number }) {
                 handleAdd();
               }
             }}
-            className="max-w-[140px] font-heading"
+            className="font-heading w-full sm:w-auto sm:max-w-[140px]"
           />
-          <Button onClick={handleAdd} disabled={!novoHorario || addMut.isPending} size="sm">
+          <Button onClick={handleAdd} disabled={!novoHorario || addMut.isPending} size="sm" className="whitespace-nowrap">
             <Plus className="h-4 w-4 mr-1" /> Adicionar
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setOpenGerar(true)}>
+          <Button variant="outline" size="sm" onClick={() => setOpenGerar(true)} className="whitespace-nowrap">
             <Wand2 className="h-4 w-4 mr-1" /> Gerar grade
           </Button>
         </div>

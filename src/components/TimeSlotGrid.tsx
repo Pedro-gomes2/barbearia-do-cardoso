@@ -23,7 +23,7 @@ export function TimeSlotGrid({ slots, selectedTime, onSelect }: TimeSlotGridProp
   }
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 animate-fade-in">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 animate-fade-in">
       {slots.map((slot) => {
         const display = slot.time.slice(0, 5);
         const isSelected = selectedTime === slot.time;
@@ -33,7 +33,7 @@ export function TimeSlotGrid({ slots, selectedTime, onSelect }: TimeSlotGridProp
             disabled={!slot.available}
             onClick={() => onSelect(slot.time)}
             className={cn(
-              "py-3 px-2 rounded-xl text-center font-heading tracking-wider transition-all duration-300 border focus:outline-none focus:ring-2 focus:ring-primary/20",
+              "py-2.5 sm:py-3 px-1.5 sm:px-2 rounded-lg sm:rounded-xl text-center font-heading text-xs sm:text-sm tracking-wider transition-all duration-300 border focus:outline-none focus:ring-2 focus:ring-primary/20",
               slot.available && !isSelected &&
                 "border-border bg-card text-foreground hover:border-primary hover:bg-primary/5 hover:shadow-sm hover:-translate-y-0.5",
               isSelected &&
