@@ -14,15 +14,30 @@ function fmtDate(iso: string) {
   return format(parse(iso, "yyyy-MM-dd", new Date()), "dd/MM/yyyy", { locale: ptBR });
 }
 
-function agendaStatus(inicio: string | null, fim: string | null): "aberta" | "fechada" | "futura" {
+function agendaStatus(
+  inicio: string | null,
+  fim: string | null,
+  horaAbertura?: string | null,
+  horaFechamento?: string | null
+): "aberta" | "fechada" | "futura" {
   if (!inicio || !fim) return "fechada";
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const agora = new Date();
   const d0 = parse(inicio, "yyyy-MM-dd", new Date());
+  if (horaAbertura) {
+    const [h, m] = horaAbertura.split(":").map(Number);
+    d0.setHours(h, m, 0, 0);
+  } else {
+    d0.setHours(0, 0, 0, 0);
+  }
   const d1 = parse(fim, "yyyy-MM-dd", new Date());
-  d1.setHours(23, 59, 59);
-  if (isBefore(hoje, d0)) return "futura";
-  if (isAfter(hoje, d1)) return "fechada";
+  if (horaFechamento) {
+    const [h, m] = horaFechamento.split(":").map(Number);
+    d1.setHours(h, m, 59, 999);
+  } else {
+    d1.setHours(23, 59, 59, 999);
+  }
+  if (isBefore(agora, d0)) return "futura";
+  if (isAfter(agora, d1)) return "fechada";
   return "aberta";
 }
 
@@ -31,6 +46,8 @@ export default function AdminConfiguracoes() {
   const [whats, setWhats] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
+  const [horaAbertura, setHoraAbertura] = useState("");
+  const [horaFechamento, setHoraFechamento] = useState("");
   const [id, setId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [agendaManual, setAgendaManual] = useState(false);
@@ -49,6 +66,8 @@ export default function AdminConfiguracoes() {
       setWhats(cfg.whatsapp_admin || "");
       setInicio(cfg.agenda_abertura_inicio || "");
       setFim(cfg.agenda_abertura_fim || "");
+      setHoraAbertura(cfg.agenda_abertura_hora?.slice(0, 5) || "");
+      setHoraFechamento(cfg.agenda_fechamento_hora?.slice(0, 5) || "");
       setAgendaManual(!!cfg.agenda_aberta_manual);
     }
   }, [cfg]);
@@ -66,6 +85,8 @@ export default function AdminConfiguracoes() {
         whatsapp_admin: whats.replace(/\D/g, ""),
         agenda_abertura_inicio: inicio || null,
         agenda_abertura_fim: fim || null,
+        agenda_abertura_hora: horaAbertura || null,
+        agenda_fechamento_hora: horaFechamento || null,
         agenda_aberta_manual: agendaManual,
       };
       if (id) {
@@ -91,6 +112,8 @@ export default function AdminConfiguracoes() {
       whatsapp_admin: whats.replace(/\D/g, ""),
       agenda_abertura_inicio: null,
       agenda_abertura_fim: null,
+      agenda_abertura_hora: null,
+      agenda_fechamento_hora: null,
       agenda_aberta_manual: false,
     };
     setLoading(true);
@@ -104,6 +127,8 @@ export default function AdminConfiguracoes() {
       }
       setInicio("");
       setFim("");
+      setHoraAbertura("");
+      setHoraFechamento("");
       setAgendaManual(false);
       toast({ title: "Período fechado", description: "A agenda foi fechada com sucesso." });
       refetch();
@@ -116,7 +141,7 @@ export default function AdminConfiguracoes() {
     }
   };
 
-  const status = agendaManual ? "aberta" : agendaStatus(inicio, fim);
+  const status = agendaManual ? "aberta" : agendaStatus(inicio, fim, horaAbertura, horaFechamento);
 
   return (
     <div className="container max-w-5xl py-8 space-y-6 animate-fade-in">
@@ -143,7 +168,7 @@ export default function AdminConfiguracoes() {
           </p>
           {inicio && fim && (
             <p className="font-body text-xs mt-0.5">
-              {fmtDate(inicio)} até {fmtDate(fim)}
+              {fmtDate(inicio)}{horaAbertura ? ` às ${horaAbertura}` : ""} até {fmtDate(fim)}{horaFechamento ? ` às ${horaFechamento}` : ""}
             </p>
           )}
         </div>
@@ -169,12 +194,20 @@ export default function AdminConfiguracoes() {
               <Input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} />
             </div>
             <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Horário de abertura</Label>
+              <Input type="time" value={horaAbertura} onChange={(e) => setHoraAbertura(e.target.value)} />
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Fecha em</Label>
               <Input type="date" value={fim} onChange={(e) => setFim(e.target.value)} min={inicio} />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Horário de fechamento</Label>
+              <Input type="time" value={horaFechamento} onChange={(e) => setHoraFechamento(e.target.value)} />
+            </div>
           </div>
           <p className="text-xs text-muted-foreground font-body">
-            Deixe em branco para manter a agenda fechada.
+            Deixe a data em branco para manter a agenda fechada. Os horários são opcionais — se vazios, a agenda abre/fecha no início/fim do dia.
           </p>
         </div>
 

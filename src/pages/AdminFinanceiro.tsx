@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DollarSign, TrendingUp, Calendar, ArrowLeft, ArrowRight, Wallet, Info, Phone, Clock, User, Scissors, ArrowDownCircle, Plus, X, Save, RefreshCw } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ArrowLeft, ArrowRight, Wallet, Info, Phone, Clock, User, Scissors, ArrowDownCircle, Plus, X, Save, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -8,8 +8,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, addDays, subWeeks, addWeeks, subMonths, addMonths, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -277,6 +288,22 @@ export default function AdminFinanceiro() {
       setIsSaving(false);
     }
   };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("agendamentos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Atendimento excluído" });
+      setSelectedApt(null);
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    },
+  });
 
   // Services not yet added (for the add dropdown)
   const availableToAdd = allServicos.filter(
@@ -583,7 +610,38 @@ export default function AdminFinanceiro() {
                   </p>
                 </div>
               </div>
-              
+
+              {/* Excluir atendimento */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full font-heading tracking-widest text-destructive border-destructive hover:bg-destructive/5 hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    EXCLUIR ATENDIMENTO
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir atendimento</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir o atendimento de <strong>{selectedApt.cliente}</strong>?
+                      Essa ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteMutation.mutate(selectedApt.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
             </div>
           )}
         </SheetContent>

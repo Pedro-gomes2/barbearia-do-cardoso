@@ -11,15 +11,30 @@ import { getAvailableSlots } from "@/lib/supabase-helpers";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-function isAgendaAberta(inicio: string | null, fim: string | null): boolean {
+function isAgendaAberta(
+  inicio: string | null,
+  fim: string | null,
+  horaAbertura?: string | null,
+  horaFechamento?: string | null
+): boolean {
   if (!inicio || !fim) return false;
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const agora = new Date();
   const d0 = parse(inicio, "yyyy-MM-dd", new Date());
+  if (horaAbertura) {
+    const [h, m] = horaAbertura.split(":").map(Number);
+    d0.setHours(h, m, 0, 0);
+  } else {
+    d0.setHours(0, 0, 0, 0);
+  }
   const d1 = parse(fim, "yyyy-MM-dd", new Date());
-  d1.setHours(23, 59, 59);
-  // Equivalente: !isBefore(hoje, d0) && !isAfter(hoje, d1) = hoje >= d0 && hoje <= d1
-  return !isBefore(hoje, d0) && !isAfter(hoje, d1);
+  if (horaFechamento) {
+    const [h, m] = horaFechamento.split(":").map(Number);
+    d1.setHours(h, m, 59, 999);
+  } else {
+    d1.setHours(23, 59, 59, 999);
+  }
+  // Equivalente: !isBefore(agora, d0) && !isAfter(agora, d1) = agora >= d0 && agora <= d1
+  return !isBefore(agora, d0) && !isAfter(agora, d1);
 }
 
 export default function Agendamento() {
@@ -34,7 +49,7 @@ export default function Agendamento() {
     queryFn: async () => {
       const { data } = await supabase
         .from("configuracoes_app")
-        .select("agenda_abertura_inicio, agenda_abertura_fim, whatsapp_admin, agenda_aberta_manual")
+        .select("agenda_abertura_inicio, agenda_abertura_fim, agenda_abertura_hora, agenda_fechamento_hora, whatsapp_admin, agenda_aberta_manual")
         .limit(1)
         .maybeSingle();
       return data;
@@ -44,6 +59,8 @@ export default function Agendamento() {
   const agendaAberta = cfg?.agenda_aberta_manual || isAgendaAberta(
     cfg?.agenda_abertura_inicio ?? null,
     cfg?.agenda_abertura_fim ?? null,
+    cfg?.agenda_abertura_hora ?? null,
+    cfg?.agenda_fechamento_hora ?? null,
   );
 
   const dateStr = date ? format(date, "yyyy-MM-dd") : null;
