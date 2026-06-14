@@ -70,8 +70,18 @@ export default function AdminFinanceiro() {
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async () => {
+      // Limite de tempo para evitar que o botão "Atualizar" gire para sempre
+      // caso a sessão/token esteja travada (comum no celular após o app
+      // ficar em segundo plano por muito tempo).
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20_000);
+
       try {
         setDebugError(null);
+
+        // Garante que o token de acesso esteja válido antes de consultar
+        // tabelas protegidas por RLS (agendamentos/agendamento_servicos).
+        await supabase.auth.getSession();
 
         const startStr = format(range.start, "yyyy-MM-dd");
         const endStr = format(range.end, "yyyy-MM-dd");
@@ -81,7 +91,8 @@ export default function AdminFinanceiro() {
           .from("agendamentos")
           .select("*, usuarios(nome, telefone), servicos(nome, preco)")
           .order("data", { ascending: false })
-          .order("horario", { ascending: false });
+          .order("horario", { ascending: false })
+          .abortSignal(controller.signal);
 
         if (period !== "historico") {
           query = query
@@ -98,7 +109,8 @@ export default function AdminFinanceiro() {
           .from("despesas")
           .select("valor")
           .gte("data", startStr)
-          .lte("data", endStr);
+          .lte("data", endStr)
+          .abortSignal(controller.signal);
 
         const [resAgendamentos, resDespesas] = await Promise.all([query, despesasQuery]);
         if (resAgendamentos.error) throw resAgendamentos.error;
@@ -123,7 +135,8 @@ export default function AdminFinanceiro() {
           const { data: junction, error: jError } = await supabase
             .from("agendamento_servicos")
             .select("agendamento_id, servicos(id, nome, preco, duracao_minutos)")
-            .in("agendamento_id", aptIds);
+            .in("agendamento_id", aptIds)
+            .abortSignal(controller.signal);
           if (jError) throw jError;
 
           (junction || []).forEach((j: any) => {
@@ -170,8 +183,14 @@ export default function AdminFinanceiro() {
         return { total, count, items, totalDespesas };
       } catch (err: any) {
         console.error("Erro no financeiro:", err);
-        setDebugError(err.message || "Erro desconhecido");
+        const message =
+          err.name === "AbortError" || /aborted/i.test(err.message || "")
+            ? "Tempo esgotado ao buscar os dados. Verifique sua conexão e tente novamente."
+            : err.message || "Erro desconhecido";
+        setDebugError(message);
         throw err;
+      } finally {
+        clearTimeout(timeoutId);
       }
     },
   });
