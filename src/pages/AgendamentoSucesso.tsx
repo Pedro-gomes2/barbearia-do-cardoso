@@ -14,12 +14,13 @@ export default function AgendamentoSucesso() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { nome, date, time, servicos, agendamentoId } = (location.state as {
+  const { nome, date, time, servicos, agendamentoId, cancelToken } = (location.state as {
     nome: string;
     date: string;
     time: string;
     servicos?: Servico[];
     agendamentoId?: string;
+    cancelToken?: string;
   }) || {};
 
   const [cfg, setCfg] = useState<any>(null);
@@ -48,8 +49,8 @@ export default function AgendamentoSucesso() {
     };
   }, [whatsappEnviado]);
 
-  // Countdown timer for WhatsApp confirmation (30 minutes)
-  const [secondsLeft, setSecondsLeft] = useState(30 * 60);
+  // Countdown timer for WhatsApp confirmation (10 minutes)
+  const [secondsLeft, setSecondsLeft] = useState(10 * 60);
   useEffect(() => {
     if (whatsappEnviado) return;
     const interval = setInterval(() => {
@@ -81,14 +82,14 @@ export default function AgendamentoSucesso() {
 
   const handleWhatsapp = async () => {
     window.open(whatsappUrl, "_blank");
-    setWhatsappEnviado(true);
-    if (agendamentoId) {
+    if (agendamentoId && cancelToken) {
       try {
-        await confirmAgendamento(agendamentoId);
+        await confirmAgendamento(agendamentoId, cancelToken);
       } catch {
         // mesmo se falhar, a mensagem já foi enviada — o admin pode confirmar manualmente
       }
     }
+    setWhatsappEnviado(true);
   };
 
   return (
@@ -107,7 +108,7 @@ export default function AgendamentoSucesso() {
           <p className="text-muted-foreground font-body text-sm">
             {whatsappEnviado
               ? "Seu horário está confirmado. Te esperamos!"
-              : <>Atendimento ainda <strong>NÃO confirmado</strong>. Envie a mensagem ao barbeiro pelo WhatsApp em até <strong>30 minutos</strong> para garantir seu horário.</>
+              : <>Atendimento ainda <strong>NÃO confirmado</strong>. Envie a mensagem ao barbeiro pelo WhatsApp em até <strong>10 minutos</strong> para garantir seu horário.</>
             }
           </p>
         </div>
@@ -116,7 +117,7 @@ export default function AgendamentoSucesso() {
           <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex gap-3 items-start">
             <AlertCircle className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
             <p className="font-body text-sm text-yellow-900">
-              Seu horário está <strong>pendente</strong> e expira em 30 minutos se não houver confirmação pelo WhatsApp.
+              Seu horário está <strong>pendente</strong> e expira em 10 minutos se não houver confirmação pelo WhatsApp.
             </p>
           </div>
         )}
@@ -157,6 +158,16 @@ export default function AgendamentoSucesso() {
             <span className="font-body">{timeDisplay}</span>
           </div>
         </div>
+
+        {/* Aviso da taxa de não comparecimento */}
+        {!whatsappEnviado && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
+            <p className="font-body text-sm text-yellow-800">
+              Lembrando que o horário é exclusivamente seu. Caso falte, será cobrada a taxa de R$ 25.
+            </p>
+          </div>
+        )}
 
         {/* Aviso obrigatório */}
         {!whatsappEnviado && (

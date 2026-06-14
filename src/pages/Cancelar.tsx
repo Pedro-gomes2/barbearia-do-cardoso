@@ -14,7 +14,7 @@ interface Agendamento {
   data: string;
   horario: string;
   status: string;
-  usuarios?: { nome: string };
+  nome?: string;
 }
 
 export default function Cancelar() {
@@ -36,14 +36,7 @@ export default function Cancelar() {
     setLoading(true);
     try {
       const [{ data }, { data: cfg }] = await Promise.all([
-        supabase
-          .from("agendamentos")
-          .select("id, data, horario, status, usuarios(nome)")
-          .eq("telefone_cliente", tel)
-          .eq("status", "ativo")
-          .gte("data", format(new Date(), "yyyy-MM-dd"))
-          .order("data")
-          .order("horario"),
+        supabase.rpc("buscar_agendamentos_por_telefone", { _telefone: tel }),
         supabase.from("configuracoes_app").select("whatsapp_admin").limit(1).maybeSingle(),
       ]);
       setAgendamentos((data as any) || []);
@@ -71,7 +64,7 @@ export default function Cancelar() {
     const dateDisplay = format(parse(apt.data, "yyyy-MM-dd", new Date()), "dd/MM/yyyy", { locale: ptBR });
     const msg = encodeURIComponent(
       `Olá! Preciso cancelar meu agendamento:\n` +
-        `👤 ${apt.usuarios?.nome || "Cliente"}\n` +
+        `👤 ${apt.nome || "Cliente"}\n` +
         `📅 ${dateDisplay}\n` +
         `🕐 ${apt.horario.slice(0, 5)}`
     );

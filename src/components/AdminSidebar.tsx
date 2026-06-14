@@ -24,7 +24,6 @@ const items = [
   { title: "Horários", url: "/admin/horarios", icon: Clock },
   { title: "Bloqueios", url: "/admin/bloqueios", icon: Ban },
   { title: "Serviços", url: "/admin/servicos", icon: Wrench },
-  { title: "Horários", url: "/admin/horarios", icon: Clock },
   { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
   { title: "Financeiro", url: "/admin/financeiro", icon: Wallet },
   { title: "Despesas", url: "/admin/despesas", icon: Wallet },

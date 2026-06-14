@@ -9,8 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { confirmAgendamento, cancelAgendamentoAdmin } from "@/lib/confirmacao-helpers";
+import { confirmAgendamento, cancelAgendamentoAdmin, buildLembreteMessage } from "@/lib/confirmacao-helpers";
 import { timeToMinutes, formatTimeDisplay } from "@/lib/time-utils";
 
 const DAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -107,9 +106,7 @@ export default function AdminAgenda() {
       return;
     }
     const nome = ag.usuarios?.nome || "Cliente";
-    const horario = ag.horario?.slice(0, 5) || "";
-    const dateDisplay = format(new Date(), "dd 'de' MMMM", { locale: ptBR });
-    const msg = `Olá ${nome}! Lembrando do seu agendamento hoje, ${dateDisplay}, às ${horario}. Até logo! ✂️`;
+    const msg = buildLembreteMessage({ nome, data: today, horario: ag.horario || "" });
     window.open(`https://wa.me/${telefone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 

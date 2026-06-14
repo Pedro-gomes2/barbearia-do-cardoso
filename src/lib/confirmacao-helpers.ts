@@ -24,18 +24,25 @@ export function buildWhatsappConfirmMessage(input: WhatsappMsgInput): string {
   return lines.join(" ");
 }
 
+export function buildLembreteMessage(input: { nome: string; data: string; horario: string }): string {
+  const dataDisplay = format(parse(input.data, "yyyy-MM-dd", new Date()), "dd 'de' MMMM", { locale: ptBR });
+  const horarioDisplay = input.horario.slice(0, 5);
+  return `Olá, ${input.nome}. Sou da Barbearia Cardoso. Passando para lembrar do seu Agendamento ${dataDisplay} às ${horarioDisplay}. Por favor, não se atrase, até logo.`;
+}
+
 export function buildWhatsappConfirmUrl(adminPhone: string, msg: string): string {
   const digits = adminPhone.replace(/\D/g, "");
   const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
   return `https://wa.me/${withCountry}?text=${encodeURIComponent(msg)}`;
 }
 
-export async function confirmAgendamento(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("agendamentos")
-    .update({ status: "ativo", expira_em: null })
-    .eq("id", id);
+export async function confirmAgendamento(id: string, cancelToken: string): Promise<void> {
+  const { data: ok, error } = await supabase.rpc("confirmar_agendamento", {
+    _agendamento_id: id,
+    _cancel_token: cancelToken,
+  });
   if (error) throw error;
+  if (!ok) throw new Error("Não foi possível confirmar o agendamento.");
 }
 
 export async function cancelAgendamentoAdmin(id: string): Promise<void> {

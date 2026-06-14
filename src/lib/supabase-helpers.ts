@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addMinutes, parse, format, isBefore } from "date-fns";
-import { normalizarTelefone } from "@/lib/telefone";
 import { timeToMinutes, minutesToTime, getDayOfWeek, getTodayString, normalizeTimeInput } from "@/lib/time-utils";
 
 export const SLOT_UNIQUE_INDEX = "agendamentos_unique_slot_active";
@@ -18,56 +17,14 @@ export class SlotIndisponivelError extends Error {
  * Each interval is [startMinutes, endMinutes) relative to midnight.
  */
 async function getOccupiedIntervals(date: string): Promise<{ start: number; end: number }[]> {
-  // Get all active/pending bookings for this date with their services
-  const { data: agendamentos } = await supabase
-    .from("agendamentos")
-    .select("horario, agendamento_servicos(servico_id)")
-    .eq("data", date)
-    .in("status", ["pendente", "ativo"]);
+  const { data, error } = await supabase.rpc("get_occupied_intervals", { _date: date });
+  if (error) throw error;
 
-  const intervals: { start: number; end: number }[] = [];
-
-  if (!agendamentos || agendamentos.length === 0) return intervals;
-
-  // Collect all service IDs
-  const allServiceIds = new Set<string>();
-  for (const ag of agendamentos as any[]) {
-    const junctions = ag.agendamento_servicos || [];
-    for (const j of junctions) {
-      if (j.servico_id) allServiceIds.add(j.servico_id);
-    }
-  }
-
-  // Fetch durations for all services in one query
-  let durationMap: Record<string, number> = {};
-  if (allServiceIds.size > 0) {
-    const { data: servicos } = await supabase
-      .from("servicos")
-      .select("id, duracao_minutos")
-      .in("id", Array.from(allServiceIds));
-    if (servicos) {
-      for (const s of servicos) {
-        durationMap[s.id] = s.duracao_minutos;
-      }
-    }
-  }
-
-  for (const ag of agendamentos as any[]) {
-    const startTime = parse(ag.horario.slice(0, 5), "HH:mm", new Date());
+  return (data || []).map((row: any) => {
+    const startTime = parse(row.horario.slice(0, 5), "HH:mm", new Date());
     const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-
-    const junctions = ag.agendamento_servicos || [];
-    let totalDuration = 0;
-    for (const j of junctions) {
-      totalDuration += durationMap[j.servico_id] || 0;
-    }
-    // Fallback: if no services linked, assume at least 15 minutes (minimum service)
-    if (totalDuration === 0) totalDuration = 15;
-
-    intervals.push({ start: startMinutes, end: startMinutes + totalDuration });
-  }
-
-  return intervals;
+    return { start: startMinutes, end: startMinutes + row.duracao_minutos };
+  });
 }
 
 /**
@@ -165,86 +122,24 @@ export async function createAppointment(
   horario: string,
   servicoIds: string[]
 ) {
-  const telNorm = normalizarTelefone(telefone);
+  const { data: rows, error } = await supabase.rpc("criar_agendamento", {
+    _nome: nome,
+    _telefone: telefone,
+    _data: data,
+    _horario: horario,
+    _servico_ids: servicoIds,
+  });
 
-  let usuario: { id: string } | null = null;
-  let usuarioFoiCriado = false;
-  if (telNorm) {
-    const { data: existente } = await supabase
-      .from("usuarios")
-      .select("id")
-      .eq("telefone_normalizado", telNorm)
-      .eq("tipo", "cliente")
-      .maybeSingle();
-    if (existente) usuario = existente;
-  }
-
-  if (!usuario) {
-    const { data: novo, error: insErr } = await supabase
-      .from("usuarios")
-      .insert({ nome, telefone, tipo: "cliente" })
-      .select("id")
-      .single();
-    if (insErr) {
-      if (insErr.code === "23505" && telNorm) {
-        const { data: retry, error: retryErr } = await supabase
-          .from("usuarios")
-          .select("id")
-          .eq("telefone_normalizado", telNorm)
-          .eq("tipo", "cliente")
-          .single();
-        if (retryErr) throw retryErr;
-        usuario = retry;
-      } else {
-        throw insErr;
-      }
-    } else {
-      usuario = novo;
-      usuarioFoiCriado = true;
-    }
-  }
-
-  const insertData: any = {
-    cliente_id: usuario.id,
-    data,
-    horario,
-    telefone_cliente: telefone.replace(/\D/g, ""),
-    status: "pendente",
-    expira_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-  };
-  if (servicoIds.length > 0) insertData.servico_id = servicoIds[0];
-
-  const { data: agendamento, error: agError } = await supabase
-    .from("agendamentos")
-    .insert(insertData)
-    .select()
-    .single();
-
-  if (agError) {
-    if (
-      agError.code === "23505" &&
-      typeof agError.message === "string" &&
-      agError.message.includes(SLOT_UNIQUE_INDEX)
-    ) {
-      if (usuarioFoiCriado) {
-        await supabase.from("usuarios").delete().eq("id", usuario.id);
-      }
+  if (error) {
+    if (error.message?.includes("SLOT_INDISPONIVEL")) {
       throw new SlotIndisponivelError();
     }
-    throw agError;
+    throw error;
   }
 
-  // Insert all services into junction table
-  if (servicoIds.length > 0) {
-    const rows = servicoIds.map((sid) => ({
-      agendamento_id: agendamento.id,
-      servico_id: sid,
-    }));
-    const { error: junctionError } = await supabase
-      .from("agendamento_servicos")
-      .insert(rows);
-    if (junctionError) throw junctionError;
-  }
-
-  return { usuario, agendamento };
+  const result = Array.isArray(rows) ? rows[0] : rows;
+  return {
+    usuario: { id: result.cliente_id },
+    agendamento: { id: result.agendamento_id, cancel_token: result.cancel_token },
+  };
 }

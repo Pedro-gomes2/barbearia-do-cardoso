@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ServiceSelector, type Servico } from "@/components/ServiceSelector";
+import { buildLembreteMessage } from "@/lib/confirmacao-helpers";
 
 type StatusFilter = "todos" | "ativo" | "cancelado";
 
@@ -436,9 +437,8 @@ function AppointmentsList({ appointments, onCancel, onFinalize }: { appointments
                 size="sm"
                 onClick={() => {
                   const tel = apt.usuarios?.telefone?.replace(/\D/g, "");
-                  const dataFormatada = format(parse(apt.data, "yyyy-MM-dd", new Date()), "dd/MM", { locale: ptBR });
                   const msg = encodeURIComponent(
-                    `Olá ${apt.usuarios?.nome}! Sou da Barbearia Cardoso. Passando para lembrar do seu agendamento hoje (${dataFormatada}) às ${apt.horario.slice(0, 5)}. Até logo!`
+                    buildLembreteMessage({ nome: apt.usuarios?.nome || "Cliente", data: apt.data, horario: apt.horario })
                   );
                   window.open(`https://wa.me/55${tel}?text=${msg}`, "_blank");
                 }}

@@ -56,7 +56,16 @@ export default function AgendamentoDados() {
     setLoading(true);
     try {
       const { agendamento } = await createAppointment(nomeCompleto, telefone, date, time, servicos.map((s) => s.id));
-      navigate("/agendamento/sucesso", { state: { nome: nomeCompleto, date, time, servicos, agendamentoId: agendamento.id } });
+      navigate("/agendamento/sucesso", {
+        state: {
+          nome: nomeCompleto,
+          date,
+          time,
+          servicos,
+          agendamentoId: agendamento.id,
+          cancelToken: agendamento.cancel_token,
+        },
+      });
     } catch (err: any) {
       if (err instanceof SlotIndisponivelError) {
         toast({
