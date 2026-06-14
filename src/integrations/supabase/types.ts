@@ -197,66 +197,6 @@ export type Database = {
         }
         Relationships: []
       }
-      fila_atendimento: {
-        Row: {
-          atualizado_em: string
-          cliente_id: string
-          criado_em: string
-          data: string
-          id: string
-          posicao: number
-          servico_id: string | null
-          status: Database["public"]["Enums"]["fila_status"]
-        }
-        Insert: {
-          atualizado_em?: string
-          cliente_id: string
-          criado_em?: string
-          data: string
-          id?: string
-          posicao: number
-          servico_id?: string | null
-          status?: Database["public"]["Enums"]["fila_status"]
-        }
-        Update: {
-          atualizado_em?: string
-          cliente_id?: string
-          criado_em?: string
-          data?: string
-          id?: string
-          posicao?: number
-          servico_id?: string | null
-          status?: Database["public"]["Enums"]["fila_status"]
-        }
-        Relationships: []
-      }
-      fila_config: {
-        Row: {
-          aberta: boolean
-          criado_em: string
-          data: string
-          hora_abertura: string
-          hora_fechamento: string
-          id: string
-        }
-        Insert: {
-          aberta?: boolean
-          criado_em?: string
-          data: string
-          hora_abertura?: string
-          hora_fechamento?: string
-          id?: string
-        }
-        Update: {
-          aberta?: boolean
-          criado_em?: string
-          data?: string
-          hora_abertura?: string
-          hora_fechamento?: string
-          id?: string
-        }
-        Relationships: []
-      }
       horarios_customizados: {
         Row: {
           ativo: boolean
@@ -374,7 +314,6 @@ export type Database = {
     }
     Enums: {
       agendamento_status: "ativo" | "cancelado" | "finalizado"
-      fila_status: "aguardando" | "atendendo" | "finalizado" | "cancelado"
       user_tipo: "cliente" | "admin"
     }
     CompositeTypes: {
@@ -504,7 +443,6 @@ export const Constants = {
   public: {
     Enums: {
       agendamento_status: ["ativo", "cancelado", "finalizado"],
-      fila_status: ["aguardando", "atendendo", "finalizado", "cancelado"],
       user_tipo: ["cliente", "admin"],
     },
   },

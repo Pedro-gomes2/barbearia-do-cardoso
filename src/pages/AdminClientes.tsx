@@ -77,15 +77,20 @@ export default function AdminClientes() {
 
       if (!usuarios || usuarios.length === 0) return [];
 
-      const clientesComTotal = await Promise.all(
-        usuarios.map(async (u) => {
-          const { count } = await supabase
-            .from("agendamentos")
-            .select("id", { count: "exact", head: true })
-            .eq("cliente_id", u.id);
-          return { ...u, total_agendamentos: count ?? 0 } as Cliente;
-        })
-      );
+      const { data: agendamentosClientes } = await supabase
+        .from("agendamentos")
+        .select("cliente_id")
+        .in("cliente_id", usuarios.map((u) => u.id));
+
+      const totaisPorCliente: Record<string, number> = {};
+      (agendamentosClientes || []).forEach((a) => {
+        if (a.cliente_id) totaisPorCliente[a.cliente_id] = (totaisPorCliente[a.cliente_id] || 0) + 1;
+      });
+
+      const clientesComTotal = usuarios.map((u) => ({
+        ...u,
+        total_agendamentos: totaisPorCliente[u.id] || 0,
+      })) as Cliente[];
 
       // Ordena alfabeticamente
       clientesComTotal.sort((a, b) =>
