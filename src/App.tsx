@@ -30,6 +30,7 @@ const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
 const AdminDespesas = lazy(() => import("./pages/AdminDespesas"));
 const AdminPortfolio = lazy(() => import("./pages/AdminPortfolio"));
 const AdminClientes = lazy(() => import("./pages/AdminClientes"));
+const AdminAnaliseServicos = lazy(() => import("./pages/AdminAnaliseServicos"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/admin/despesas" element={<AdminDespesas />} />
               <Route path="/admin/portfolio" element={<AdminPortfolio />} />
               <Route path="/admin/clientes" element={<AdminClientes />} />
+              <Route path="/admin/analise-servicos" element={<AdminAnaliseServicos />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

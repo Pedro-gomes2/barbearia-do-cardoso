@@ -114,15 +114,59 @@ export default function AgendamentoSucesso() {
         </div>
 
         {!whatsappEnviado && (
-          <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex gap-3 items-start">
-            <AlertCircle className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
-            <p className="font-body text-sm text-yellow-900">
-              Seu horário está <strong>pendente</strong> e expira em 10 minutos se não houver confirmação pelo WhatsApp.
-            </p>
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex gap-3 items-start">
+              <AlertCircle className="h-5 w-5 text-yellow-700 flex-shrink-0 mt-0.5" />
+              <p className="font-body text-sm text-yellow-900">
+                Seu horário está <strong>pendente</strong> e expira em 10 minutos se não houver confirmação pelo WhatsApp.
+              </p>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
+              <p className="font-body text-sm text-yellow-800">
+                <strong>Atenção:</strong> Você precisa enviar a mensagem no WhatsApp para confirmar seu agendamento. Sem a confirmação o horário não será garantido.
+              </p>
+            </div>
+
+            {secondsLeft > 0 && (
+              <p className="text-sm text-muted-foreground text-center">
+                Tempo restante para confirmar: {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+              </p>
+            )}
+
+            {/* Botão WhatsApp — obrigatório no topo antes dos dados */}
+            <Button
+              onClick={handleWhatsapp}
+              className="w-full py-6 text-base sm:text-lg font-heading tracking-widest bg-[#25D366] hover:bg-[#1da851] text-white shadow-md transition-transform active:scale-[0.98]"
+              size="lg"
+            >
+              <MessageCircle className="mr-2 h-5 w-5" />
+              CONFIRMAR PELO WHATSAPP
+            </Button>
           </div>
         )}
 
-        {/* Resumo */}
+        {/* Só aparece após enviar */}
+        {whatsappEnviado && (
+          <div className="space-y-3 animate-fade-in">
+            <div className="bg-green-50 border border-green-300 rounded-xl p-4 text-center">
+              <p className="font-body text-sm text-green-800 font-semibold">
+                ✅ Agendamento confirmado!
+              </p>
+            </div>
+            <Button
+              onClick={handleWhatsapp}
+              className="w-full py-5 text-sm sm:text-base font-heading tracking-widest bg-[#25D366] hover:bg-[#1da851] text-white"
+              size="lg"
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              ENVIAR NOVAMENTE NO WHATSAPP
+            </Button>
+          </div>
+        )}
+
+        {/* Resumo — Caixa de Dados do Cliente e Agendamento */}
         <div className="bg-card rounded-xl p-5 border border-border w-full space-y-3">
           <div className="flex items-center gap-3">
             <span className="text-primary font-semibold text-sm font-body">Nome:</span>
@@ -169,50 +213,14 @@ export default function AgendamentoSucesso() {
           </div>
         )}
 
-        {/* Aviso obrigatório */}
-        {!whatsappEnviado && (
-          <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
-            <p className="font-body text-sm text-yellow-800">
-              <strong>Atenção:</strong> Você precisa enviar a mensagem no WhatsApp para confirmar seu agendamento. Sem a confirmação o horário não será garantido.
-            </p>
-          </div>
-        )}
-        
-        {/* Countdown timer */}
-        {!whatsappEnviado && secondsLeft > 0 && (
-          <p className="text-sm text-muted-foreground mt-2 text-center">
-            Tempo restante para confirmar: {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
-          </p>
-        )}
-
-        {/* Botão WhatsApp — obrigatório */}
+        {/* Botão de voltar ao início */}
         <Button
-          onClick={handleWhatsapp}
-          className="w-full py-6 text-lg font-heading tracking-widest bg-[#25D366] hover:bg-[#1da851] text-white"
-          size="lg"
+          onClick={() => navigate("/")}
+          variant="ghost"
+          className="w-full py-4 font-heading tracking-widest text-muted-foreground hover:text-foreground"
         >
-          <MessageCircle className="mr-2 h-5 w-5" />
-          {whatsappEnviado ? "ENVIAR NOVAMENTE" : "CONFIRMAR PELO WHATSAPP"}
+          VOLTAR AO INÍCIO
         </Button>
-
-        {/* Só aparece após enviar */}
-        {whatsappEnviado && (
-          <div className="space-y-3 animate-fade-in">
-            <div className="bg-green-50 border border-green-300 rounded-xl p-4 text-center">
-              <p className="font-body text-sm text-green-800 font-semibold">
-                ✅ Agendamento confirmado!
-              </p>
-            </div>
-            <Button
-              onClick={() => navigate("/")}
-              variant="ghost"
-              className="w-full py-4 font-heading tracking-widest"
-            >
-              VOLTAR AO INÍCIO
-            </Button>
-          </div>
-        )}
       </main>
     </div>
   );
