@@ -51,6 +51,9 @@ export default function AdminConfiguracoes() {
   const [id, setId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [agendaManual, setAgendaManual] = useState(false);
+  const [pixChave, setPixChave] = useState("");
+  const [pixNomeTitular, setPixNomeTitular] = useState("");
+  const [pixCidade, setPixCidade] = useState("");
 
   const { data: cfg, refetch } = useQuery({
     queryKey: ["admin-cfg-app"],
@@ -69,6 +72,9 @@ export default function AdminConfiguracoes() {
       setHoraAbertura(cfg.agenda_abertura_hora?.slice(0, 5) || "");
       setHoraFechamento(cfg.agenda_fechamento_hora?.slice(0, 5) || "");
       setAgendaManual(!!cfg.agenda_aberta_manual);
+      setPixChave(cfg.pix_chave || "");
+      setPixNomeTitular(cfg.pix_nome_titular || "");
+      setPixCidade(cfg.pix_cidade || "");
     }
   }, [cfg]);
 
@@ -88,6 +94,9 @@ export default function AdminConfiguracoes() {
         agenda_abertura_hora: horaAbertura || null,
         agenda_fechamento_hora: horaFechamento || null,
         agenda_aberta_manual: agendaManual,
+        pix_chave: pixChave.trim() || null,
+        pix_nome_titular: pixNomeTitular.trim() || null,
+        pix_cidade: pixCidade.trim() || null,
       };
       if (id) {
         const { error } = await supabase.from("configuracoes_app").update(payload).eq("id", id);
@@ -215,6 +224,26 @@ export default function AdminConfiguracoes() {
         <div className="space-y-2">
           <Label>WhatsApp do admin (com DDI, ex: 5521995323454)</Label>
           <Input value={whats} onChange={(e) => setWhats(e.target.value)} maxLength={15} />
+        </div>
+
+        {/* Pix */}
+        <div className="space-y-3 border-t border-border pt-4">
+          <Label className="font-semibold">Chave Pix (recebimento)</Label>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Chave (telefone, e-mail, CPF/CNPJ ou aleatória)</Label>
+            <Input value={pixChave} onChange={(e) => setPixChave(e.target.value)} placeholder="21995323454" maxLength={77} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Nome do titular</Label>
+            <Input value={pixNomeTitular} onChange={(e) => setPixNomeTitular(e.target.value)} placeholder="Nome como está na conta" maxLength={25} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Cidade</Label>
+            <Input value={pixCidade} onChange={(e) => setPixCidade(e.target.value)} placeholder="Rio de Janeiro" maxLength={15} />
+          </div>
+          <p className="text-xs text-muted-foreground font-body">
+            Usada para gerar o QR code de pagamento na página de Planos. Os três campos precisam estar preenchidos para o QR code aparecer.
+          </p>
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row">
