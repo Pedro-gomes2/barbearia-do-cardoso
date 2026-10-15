@@ -75,7 +75,7 @@ export default function AdminFinanceiro() {
     return { start: subMonths(new Date(), 24), end: addMonths(new Date(), 1) };
   })();
 
-  const { data: report = { total: 0, count: 0, items: [], totalDespesas: 0 }, isLoading, isFetching, refetch } = useQuery({
+  const { data: report = { total: 0, count: 0, items: [], totalDespesas: 0, receitasAvulsas: [] }, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["financeiro", period, range.start.toISOString(), range.end.toISOString(), statusFilter],
     // Sempre busca fresco ao entrar / mudar filtro (faturamento não pode ficar em cache velho)
     staleTime: 0,
@@ -123,12 +123,26 @@ export default function AdminFinanceiro() {
           .lte("data", endStr)
           .abortSignal(controller.signal);
 
-        const [resAgendamentos, resDespesas] = await Promise.all([query, despesasQuery]);
+        // 2b) Receitas avulsas (ex.: aprovação de planos mensais) no range do período
+        const receitasAvulsasQuery = supabase
+          .from("receitas_avulsas")
+          .select("id, descricao, valor, data")
+          .gte("data", startStr)
+          .lte("data", endStr)
+          .abortSignal(controller.signal);
+
+        const [resAgendamentos, resDespesas, resReceitasAvulsas] = await Promise.all([
+          query,
+          despesasQuery,
+          receitasAvulsasQuery,
+        ]);
         if (resAgendamentos.error) throw resAgendamentos.error;
         if (resDespesas.error) throw resDespesas.error;
+        if (resReceitasAvulsas.error) throw resReceitasAvulsas.error;
 
         const agendamentos = resAgendamentos.data || [];
         const despesasData = resDespesas.data || [];
+        const receitasAvulsasData = resReceitasAvulsas.data || [];
 
         const totalDespesas = despesasData.reduce(
           (acc, curr) => acc + Number(curr.valor || 0),
@@ -162,7 +176,12 @@ export default function AdminFinanceiro() {
         // 4) Monta items
         const items: any[] = agendamentos.map((a: any) => {
           const fromJunction = priceMap[a.id];
-          const price = fromJunction
+          // Agendamentos pagos com crédito de plano já tiveram sua receita
+          // contabilizada em receitas_avulsas (via aprovar_plano), então aqui
+          // o valor é zerado para não contar a receita em duplicidade.
+          const price = a.assinatura_id
+            ? 0
+            : fromJunction
             ? fromJunction.total
             : Number(a.servicos?.preco || 0);
           const services =
@@ -188,10 +207,14 @@ export default function AdminFinanceiro() {
         // Faturamento bruto = soma de TUDO que aparece no detalhamento do período.
         // (Para dia/semana/mes a query já filtrou só status=finalizado;
         //  para historico segue o statusFilter escolhido.)
-        const total = items.reduce((sum, it) => sum + Number(it.valor || 0), 0);
+        const totalReceitasAvulsas = receitasAvulsasData.reduce(
+          (sum, r) => sum + Number(r.valor || 0),
+          0
+        );
+        const total = items.reduce((sum, it) => sum + Number(it.valor || 0), 0) + totalReceitasAvulsas;
         const count = items.length;
 
-        return { total, count, items, totalDespesas };
+        return { total, count, items, totalDespesas, receitasAvulsas: receitasAvulsasData };
       } catch (err: any) {
         console.error("Erro no financeiro:", err);
         const message =
@@ -408,7 +431,7 @@ export default function AdminFinanceiro() {
                 <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                 <p className="text-muted-foreground font-body animate-pulse">Carregando dados...</p>
               </div>
-            ) : !debugError && report.items.length === 0 ? (
+            ) : !debugError && report.items.length === 0 && report.receitasAvulsas.length === 0 ? (
               <div className="bg-muted/30 border border-dashed border-border rounded-2xl p-12 text-center">
                 <p className="text-muted-foreground font-body">Nenhum registro encontrado para este critério.</p>
               </div>
@@ -444,6 +467,25 @@ export default function AdminFinanceiro() {
                     <div className="text-right space-y-1">
                       <p className="font-heading text-xl text-foreground">R$ {item.valor.toFixed(2).replace(".", ",")}</p>
                       <Info className="h-4 w-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                ))}
+                {report.receitasAvulsas.map((r: any) => (
+                  <div
+                    key={r.id}
+                    className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between"
+                  >
+                    <div className="space-y-2">
+                      <p className="font-body text-sm font-medium">{r.descricao}</p>
+                      <p className="text-[11px] text-muted-foreground font-body flex items-center gap-1.5">
+                        <Calendar className="h-3 w-3" /> {new Date(r.data).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <p className="font-heading text-xl text-foreground">R$ {Number(r.valor).toFixed(2).replace(".", ",")}</p>
+                      <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">
+                        Plano
+                      </span>
                     </div>
                   </div>
                 ))}
