@@ -29,6 +29,18 @@ vi.mock("@/integrations/supabase/client", () => {
           select: () => ({
             in: async () => ({ data: state.planoServicosData, error: null }),
           }),
+          delete: () => ({
+            eq: (_col: string, planoId: string) => {
+              state.deletedPlanoServicosIds = state.deletedPlanoServicosIds || [];
+              state.deletedPlanoServicosIds.push(planoId);
+              return Promise.resolve({ error: null });
+            },
+          }),
+          insert: async (rows: any[]) => {
+            state.insertedPlanoServicosRows = state.insertedPlanoServicosRows || [];
+            state.insertedPlanoServicosRows.push(...rows);
+            return { error: null };
+          },
         };
       }
       return {};
@@ -55,6 +67,8 @@ beforeEach(() => {
   s.lastRpcCall = null;
   s.planosData = [];
   s.planoServicosData = [];
+  s.deletedPlanoServicosIds = undefined;
+  s.insertedPlanoServicosRows = undefined;
 });
 
 describe("solicitarPlano", () => {
@@ -118,5 +132,38 @@ describe("listPlanosPublicos", () => {
     getState().planosData = [];
     const result = await listPlanosPublicos();
     expect(result).toEqual([]);
+  });
+});
+
+import { setPlanoServicos, aprovarPlano, rejeitarPlano } from "@/lib/planos-helpers";
+
+describe("setPlanoServicos", () => {
+  it("deleta vinculos antigos e insere os novos", async () => {
+    await setPlanoServicos("plano-1", ["s1", "s2"]);
+    const s = getState();
+    expect(s.deletedPlanoServicosIds).toEqual(["plano-1"]);
+    expect(s.insertedPlanoServicosRows).toEqual([
+      { plano_id: "plano-1", servico_id: "s1" },
+      { plano_id: "plano-1", servico_id: "s2" },
+    ]);
+  });
+
+  it("array vazio so deleta, nao insere", async () => {
+    await setPlanoServicos("plano-1", []);
+    const s = getState();
+    expect(s.deletedPlanoServicosIds).toEqual(["plano-1"]);
+    expect(s.insertedPlanoServicosRows).toBeUndefined();
+  });
+});
+
+describe("aprovarPlano / rejeitarPlano", () => {
+  it("aprovarPlano chama a RPC aprovar_plano com o id certo", async () => {
+    await aprovarPlano("ass-1");
+    expect(getState().lastRpcCall).toEqual({ name: "aprovar_plano", params: { _assinatura_id: "ass-1" } });
+  });
+
+  it("rejeitarPlano chama a RPC rejeitar_plano com o id certo", async () => {
+    await rejeitarPlano("ass-1");
+    expect(getState().lastRpcCall).toEqual({ name: "rejeitar_plano", params: { _assinatura_id: "ass-1" } });
   });
 });
