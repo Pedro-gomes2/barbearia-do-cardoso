@@ -63,7 +63,7 @@ export default function AdminPlanos() {
       const id = await upsertPlano({
         id: editando?.id,
         nome: formNome,
-        preco: Number(formPreco.replace(",", ".")) || 0,
+        preco: Number(formPreco.replace(",", ".")),
         ativo: formAtivo,
       });
       await setPlanoServicos(id, formServicoIds);
@@ -80,6 +80,15 @@ export default function AdminPlanos() {
     },
     onError: (err: any) => toast({ title: "Erro ao salvar plano", description: err.message, variant: "destructive" }),
   });
+
+  const handleSalvarPlano = () => {
+    const preco = Number(formPreco.replace(",", "."));
+    if (!Number.isFinite(preco) || preco <= 0) {
+      toast({ title: "Preço inválido", description: "Informe um valor maior que zero.", variant: "destructive" });
+      return;
+    }
+    salvarPlanoMutation.mutate();
+  };
 
   const handleEditar = (plano: PlanoAdmin) => {
     setEditando(plano);
@@ -194,7 +203,7 @@ export default function AdminPlanos() {
                 ))}
               </div>
             </div>
-            <Button onClick={() => salvarPlanoMutation.mutate()} disabled={!formNome || salvarPlanoMutation.isPending}>
+            <Button onClick={handleSalvarPlano} disabled={!formNome || salvarPlanoMutation.isPending}>
               Salvar plano
             </Button>
           </div>
