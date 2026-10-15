@@ -46,6 +46,7 @@ describe("createAppointment", () => {
         _data: "2026-06-01",
         _horario: "10:00:00",
         _servico_ids: ["srv-1"],
+        _assinatura_id: null,
       },
     });
   });
@@ -70,5 +71,27 @@ describe("createAppointment", () => {
     await expect(
       createAppointment("Joao", "21999999999", "2026-06-01", "10:00:00", [])
     ).rejects.not.toBeInstanceOf(SlotIndisponivelError);
+  });
+});
+
+describe("createAppointment com plano", () => {
+  it("inclui _assinatura_id na chamada da RPC quando informado", async () => {
+    await createAppointment("Joao", "21999999999", "2026-06-02", "10:00:00", ["s1"], "ass-1");
+    expect(getState().lastRpcCall).toEqual({
+      name: "criar_agendamento",
+      params: {
+        _nome: "Joao",
+        _telefone: "21999999999",
+        _data: "2026-06-02",
+        _horario: "10:00:00",
+        _servico_ids: ["s1"],
+        _assinatura_id: "ass-1",
+      },
+    });
+  });
+
+  it("manda _assinatura_id null quando nao informado", async () => {
+    await createAppointment("Joao", "21999999999", "2026-06-02", "10:00:00", ["s1"]);
+    expect(getState().lastRpcCall.params._assinatura_id).toBeNull();
   });
 });

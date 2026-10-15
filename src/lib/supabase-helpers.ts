@@ -12,6 +12,13 @@ export class SlotIndisponivelError extends Error {
   }
 }
 
+export class PlanoInvalidoError extends Error {
+  constructor() {
+    super("Não foi possível usar o plano para este agendamento.");
+    this.name = "PlanoInvalidoError";
+  }
+}
+
 /**
  * Calculates the occupied time intervals for a given date.
  * Each interval is [startMinutes, endMinutes) relative to midnight.
@@ -120,7 +127,8 @@ export async function createAppointment(
   telefone: string,
   data: string,
   horario: string,
-  servicoIds: string[]
+  servicoIds: string[],
+  assinaturaId?: string
 ) {
   const { data: rows, error } = await supabase.rpc("criar_agendamento", {
     _nome: nome,
@@ -128,11 +136,15 @@ export async function createAppointment(
     _data: data,
     _horario: horario,
     _servico_ids: servicoIds,
+    _assinatura_id: assinaturaId ?? null,
   });
 
   if (error) {
     if (error.message?.includes("SLOT_INDISPONIVEL")) {
       throw new SlotIndisponivelError();
+    }
+    if (error.message?.includes("PLANO_INVALIDO")) {
+      throw new PlanoInvalidoError();
     }
     throw error;
   }
