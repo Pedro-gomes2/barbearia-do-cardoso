@@ -65,7 +65,7 @@ export default function Index() {
             </p>
           </div>
 
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 w-full max-w-md">
+          <div className="mt-10 flex flex-col sm:flex-row flex-wrap justify-center gap-4 w-full max-w-xl">
             <Button
               onClick={() => navigate("/agendamento")}
               className="flex-1 py-8 text-xl font-heading tracking-[0.2em] shadow-[0_0_30px_rgba(var(--primary),0.3)] hover:shadow-[0_0_50px_rgba(var(--primary),0.5)] transition-all group"
@@ -82,6 +82,14 @@ export default function Index() {
               size="lg"
             >
               PRODUTOS
+            </Button>
+            <Button
+              onClick={() => navigate("/planos")}
+              variant="outline"
+              className="flex-1 py-8 text-xl font-heading tracking-[0.2em] border-primary/40 bg-black/40 text-white hover:bg-black/60 hover:border-primary transition-all backdrop-blur-md"
+              size="lg"
+            >
+              PLANOS
             </Button>
           </div>
         </div>

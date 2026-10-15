@@ -14,6 +14,7 @@ import AgendamentoDados from "./pages/AgendamentoDados";
 import AgendamentoSucesso from "./pages/AgendamentoSucesso";
 import Cancelar from "./pages/Cancelar";
 import Produtos from "./pages/Produtos";
+import Planos from "./pages/Planos";
 import NotFound from "./pages/NotFound";
 
 // Admin: lazy — o cliente no mobile não baixa esse código.
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/agendamento/sucesso" element={<AgendamentoSucesso />} />
             <Route path="/cancelar" element={<Cancelar />} />
             <Route path="/produtos" element={<Produtos />} />
+            <Route path="/planos" element={<Planos />} />
             <Route path="/admin" element={<AdminLogin />} />
             <Route element={<RequireAuth><AdminLayout /></RequireAuth>}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
